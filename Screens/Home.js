@@ -10,7 +10,7 @@ const Tab=createBottomTabNavigator();
 
 export default function Home() {
   return (
-    <Tab.Navigator>
+    <Tab.Navigator screenOptions={{headerShown: false}}>
         <Tab.Screen name='MyAccount' component={MyAccount}/>
         <Tab.Screen name='ListAccount' component={ListAccount}/>
         <Tab.Screen name='Groupe' component={Groupe}/>

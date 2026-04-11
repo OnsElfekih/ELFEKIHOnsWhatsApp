@@ -1,14 +1,24 @@
 import { StatusBar } from 'expo-status-bar';
 import { Button, ImageBackground, StyleSheet, Text, TextInput, View } from 'react-native';
+import firebase from '../Config';
 
+const auth=firebase.auth();
 export default function Auth(props) {
+  var email,password;
   return (
     <ImageBackground source={require("../assets/backgroundimg1.jpg")} style={styles.container}>
       <View style={styles.view}>
       <Text style={styles.text}>Welcome!</Text>
-      <TextInput style={styles.input} placeholder="email@address.com"></TextInput>
-      <TextInput style={styles.input} placeholder="**password**"></TextInput>
-      <Button onPress={()=>{props.navigation.navigate('Home')}} title="Submit" color="#b135a3"></Button>
+      <TextInput onChangeText={(txt)=>{email=txt}} keyboardType="email-address" style={styles.input} placeholder="email@address.com"></TextInput>
+      <TextInput onChangeText={(txt)=>{password=txt}} style={styles.input} placeholder="**password**"></TextInput>
+      <Button onPress={()=>{
+       
+          auth.signInWithEmailAndPassword(email,password)
+        .then(()=>{props.navigation.navigate('Home');})
+        .catch((error)=>{alert(error)});
+        }}
+       
+         title="Submit" color="#b135a3"></Button>
       <Text onPress={()=>{props.navigation.navigate('SignUp')}}>Create a new account</Text>
       </View>
       <StatusBar style="auto" />
