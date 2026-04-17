@@ -60,6 +60,8 @@ export default function ListAccount() {
               ></Image>
               <Text> {item.Nom} </Text>
               <Text> {item.Pseudo} </Text>
+              <Text> {item.Numero} </Text>
+
             </View>
           );
         }}
