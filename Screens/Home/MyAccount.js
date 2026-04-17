@@ -13,6 +13,8 @@ import {
 import firebase from "../../Config";
 const database=firebase.database();
 const ref_all_accounts=database.ref("allaccounts");
+const auth=firebase.auth();
+
 
 export default function MyAccount(props) {
   //nekteb usess twali tjini toul useState
@@ -20,6 +22,12 @@ export default function MyAccount(props) {
   const [Pseudo, setPseudo] = useState();
   const [Email, setEmail] = useState();
   const [Numero, setNumero] = useState();
+
+  const handleDeconnect=()=>{
+  auth.signOut()
+  .then(()=>{props.navigation.navigate('Auth');})
+  .catch((error)=>{alert(error)});
+}
 
   return (
     <ImageBackground
@@ -97,6 +105,7 @@ export default function MyAccount(props) {
         </Text>
       </TouchableOpacity>
       <TouchableOpacity
+        onPress={handleDeconnect}
         activeOpacity={0.5}
         underlayColor="#DDDDDD"
         style={styles.button}
