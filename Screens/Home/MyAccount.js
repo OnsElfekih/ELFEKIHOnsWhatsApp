@@ -8,6 +8,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  Alert,
 } from "react-native";
 
 import firebase from "../../Config";
@@ -24,10 +25,54 @@ export default function MyAccount(props) {
   const [Numero, setNumero] = useState();
 
   const handleDeconnect=()=>{
-  auth.signOut()
-  .then(()=>{props.navigation.navigate('Auth');})
-  .catch((error)=>{alert(error)});
-}
+    auth.signOut()
+    .then(()=>{props.navigation.navigate('Auth');})
+    .catch((error)=>{alert(error)});
+  }
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      "Supprimer le compte",
+      "Êtes-vous sûr de vouloir supprimer définitivement votre compte ?",
+      [
+        {
+          text: "Annuler",
+          onPress: () => console.log("Suppression annulée"),
+          style: "cancel"
+        },
+        {
+          text: "Supprimer",
+          onPress: () => {
+            const currentUser = auth.currentUser;
+            
+            if (currentUser) {
+              // Supprimer de la base de données
+              ref_all_accounts.once("value", (snapshot) => {
+                snapshot.forEach((child) => {
+                  if (child.val().Email === currentUser.email) {
+                    child.ref.remove();
+                  }
+                });
+              });
+
+              // Supprimer de l'authentification
+              currentUser.delete()
+                .then(() => {
+                  alert("Compte supprimé avec succès");
+                  props.navigation.navigate('Auth');
+                })
+                .catch((error) => {
+                  alert("Erreur suppression: " + error.message);
+                });
+            } else {
+              alert("Utilisateur non trouvé");
+            }
+          },
+          style: "destructive"
+        }
+      ]
+    );
+  }
 
   return (
     <ImageBackground
@@ -120,6 +165,7 @@ export default function MyAccount(props) {
         </Text>
       </TouchableOpacity>
       <TouchableOpacity
+        onPress={handleDeleteAccount}
         activeOpacity={0.5}
         underlayColor="#DDDDDD"
         style={[styles.button, { backgroundColor: "red" }]}
