@@ -10,6 +10,7 @@ import {
 
 import { useEffect, useState } from "react";
 import firebase from "../../Config";
+import { supabase } from "../../Config";
 const database=firebase.database();
 const ref_all_accounts=database.ref("allaccounts");
 
@@ -59,7 +60,7 @@ export default function ListAccount(props) {
             >
               <Image
                 style={{ width: 50, height: 50 }}
-                source={require("../../assets/profil.png")}
+                source={item.UrlImage ? { uri: item.UrlImage } : require("../../assets/profil.png")}
               ></Image>
               <Text> {item.Nom} </Text>
               <Text> {item.Pseudo} </Text>

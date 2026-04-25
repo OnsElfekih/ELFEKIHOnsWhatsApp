@@ -1,3 +1,4 @@
+import * as ImagePicker from "expo-image-picker";
 import { StatusBar } from "expo-status-bar";
 import { set } from "firebase/database";
 import { useState } from "react";
@@ -16,6 +17,7 @@ const database=firebase.database();
 const ref_all_accounts=database.ref("allaccounts");
 const auth=firebase.auth();
 
+import {supabase} from "../../Config";
 
 export default function MyAccount(props) {
   const userid=props.route.params.userid;
@@ -24,6 +26,30 @@ export default function MyAccount(props) {
   const [Pseudo, setPseudo] = useState();
   const [Email, setEmail] = useState();
   const [Numero, setNumero] = useState();
+  const [UrlImage, setUrlImage] = useState();
+
+   const pickImage = async () => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permissionResult.granted) {
+      Alert.alert('Permission required', 'Permission to access the media library is required.');
+      return;
+    }
+
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images', 'videos'],
+      allowsEditing: false,
+      aspect: [4, 3],
+      quality: 1,
+    });
+
+    console.log(result); //uri: lien local m telephone
+
+    if (!result.canceled) {
+      setUrlImage(result.assets[0].uri);
+    }
+  };
+
 
   const handleDeconnect=()=>{
     auth.signOut()
@@ -75,6 +101,27 @@ export default function MyAccount(props) {
     );
   }
 
+const uploadImageToSupabase = async (url) => {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    const arraybuffer = await new Response(blob).arrayBuffer();
+
+    const filenameInSupabase = Date.now() + ".jpg";
+
+    await supabase.storage
+      .from("images")
+      .upload(filenameInSupabase, arraybuffer, {
+        upsert: true,
+      });
+
+    // getting public url
+    const { data } = supabase.storage
+      .from("images")
+      .getPublicUrl(filenameInSupabase);
+    console.log(data);
+    return data.publicUrl;
+  };
+
   return (
     <ImageBackground
       source={require("../../assets/backgroundimg1.jpg")}
@@ -83,14 +130,16 @@ export default function MyAccount(props) {
       <StatusBar style="light" />
       <Text style={styles.textstyle}>Account</Text>
 
+      <TouchableOpacity onPress={pickImage}>
       <Image
-        source={require("../../assets/profil.png")}
+        source={UrlImage ? { uri: UrlImage } : require("../../assets/profil.png")}
         style={{
           height: 200,
           width: 200,
           borderRadius: 100,
         }}
       />
+      </TouchableOpacity>
       <TextInput
         value={Nom}
         onChangeText={(text) => setNom(text)}
@@ -127,14 +176,18 @@ export default function MyAccount(props) {
         style={styles.textinputstyle}
       ></TextInput>
       <TouchableOpacity
-       onPress={()=>{;
+      //n7otou async 5atr 3ana await
+       onPress={async()=>{
+        const link=UrlImage ? await uploadImageToSupabase(UrlImage) : null;
+
         const ref_one_account=ref_all_accounts.child(userid);
         ref_one_account.set({
           Id: userid, 
           Nom,
           Pseudo,
           Email,
-          Numero
+          Numero,
+          UrlImage : link
         })
        }}
         activeOpacity={0.5}

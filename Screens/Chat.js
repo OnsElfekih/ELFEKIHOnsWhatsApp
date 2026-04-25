@@ -20,13 +20,17 @@ export default function Chat(props) {
     const secondid=props.route.params.secondid;
     const [data, setdata] = useState([]);
     const [message, setMessage] = useState();
+    const [secondistyping, setSecondistyping] = useState();
+    
     const iddiscussion=
     currentid>secondid?currentid+secondid:secondid+currentid;
     const ref_discussion=ref_all_messages.child(iddiscussion);
     const ref_chat=ref_discussion.child("chat");
+    const ref_second_istyping = ref_discussion.child(secondid + "istyping")
 
     useEffect(() => {
         //snapshot copie de ref_chat
+        //on:kol matetbadl na9raha
       ref_chat.on("value",(snapshot)=>{
         var d=[];
         snapshot.forEach(one_message => {
@@ -34,13 +38,15 @@ export default function Chat(props) {
         });
         setdata(d);
       });
-        ;
+      ref_second_istyping.on("value",(snapshot)=>{
+        setSecondistyping(snapshot.val());
+      })
     
       return () => {
         ref_chat.off();
+        ref_second_istyping.off()
       }
     }, [])
-    
   return (
     <ImageBackground
       style={styles.container}
@@ -70,10 +76,22 @@ export default function Chat(props) {
           borderRadius: 8,
         }}
       >
+        {secondistyping && <Text>is typing ...</Text>}
         <TextInput
           onChangeText={(txt) => {
             setMessage(txt);
           }}
+          onFocus={() => {
+            const ref_me_istyping = ref_discussion.child(
+            currentid + "istyping",
+          );
+          ref_me_istyping.set(true);
+          }}
+          
+          onBlur={() => {
+  const ref_me_istyping = ref_discussion.child(currentid + "istyping");
+  ref_me_istyping.set(false);
+}}
           placeholder="type message"
           style={{ backgroundColor: "#00f4", width: "75%" }}
         ></TextInput>

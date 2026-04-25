@@ -14,6 +14,14 @@ const firebaseConfig = {
   appId: "1:916616845921:web:a66cc5ae94655166fc6820"
 };
 
+
 // Initialize Firebase
 const firebase = app.initializeApp(firebaseConfig);
 export default firebase;
+
+
+import { createClient } from '@supabase/supabase-js'
+const supabaseUrl = 'https://zdcoyxvosjknskcevtjl.supabase.co'
+const supabaseKey = "sb_publishable_X3P7LOQo1xqiGTa5OPGxUA_ZNxuS1of"
+const supabase = createClient(supabaseUrl, supabaseKey)
+export { supabase };
