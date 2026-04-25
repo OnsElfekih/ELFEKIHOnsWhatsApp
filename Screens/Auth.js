@@ -4,7 +4,7 @@ import firebase from '../Config';
 
 const auth=firebase.auth();
 export default function Auth(props) {
-  var email,password;
+  var email="elfekihons@gmail.com",password="elfekihons";
   return (
     <ImageBackground source={require("../assets/backgroundimg1.jpg")} style={styles.container}>
       <View style={styles.view}>
@@ -14,7 +14,10 @@ export default function Auth(props) {
       <Button onPress={()=>{
        
           auth.signInWithEmailAndPassword(email,password)
-        .then(()=>{props.navigation.navigate('Home');})
+        .then(()=>{
+          const userid=auth.currentUser.uid;
+          props.navigation.navigate('Home', {userid: userid});
+        })
         .catch((error)=>{alert(error)});
         }}
        

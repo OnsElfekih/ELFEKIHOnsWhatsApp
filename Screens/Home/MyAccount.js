@@ -18,6 +18,7 @@ const auth=firebase.auth();
 
 
 export default function MyAccount(props) {
+  const userid=props.route.params.userid;
   //nekteb usess twali tjini toul useState
   const [Nom, setNom] = useState();
   const [Pseudo, setPseudo] = useState();
@@ -26,7 +27,7 @@ export default function MyAccount(props) {
 
   const handleDeconnect=()=>{
     auth.signOut()
-    .then(()=>{props.navigation.navigate('Auth');})
+    .then(()=>{props.navigation.replace('Auth');})
     .catch((error)=>{alert(error)});
   }
 
@@ -59,7 +60,7 @@ export default function MyAccount(props) {
               currentUser.delete()
                 .then(() => {
                   alert("Compte supprimé avec succès");
-                  props.navigation.navigate('Auth');
+                  props.navigation.replace('Auth');
                 })
                 .catch((error) => {
                   alert("Erreur suppression: " + error.message);
@@ -126,10 +127,10 @@ export default function MyAccount(props) {
         style={styles.textinputstyle}
       ></TextInput>
       <TouchableOpacity
-       onPress={()=>{
-        const key=ref_all_accounts.push().key;
-        const ref_one_account=ref_all_accounts.child(key);
+       onPress={()=>{;
+        const ref_one_account=ref_all_accounts.child(userid);
         ref_one_account.set({
+          Id: userid, 
           Nom,
           Pseudo,
           Email,

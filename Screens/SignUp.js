@@ -20,7 +20,10 @@ export default function SignUp(props) {
             <Button onPress={()=>{
               if(password===confirmPassword){
               auth.createUserWithEmailAndPassword(email,password)
-              .then(()=>{props.navigation.navigate('Home');})
+              .then(()=>{
+                const userid=auth.currentUser.uid;
+                props.navigation.replace('MyAccount', {userid: userid});
+              })
               .catch((error)=>{alert(error)});
               }
             else alert ("vérifier les données...");}}

@@ -4,6 +4,7 @@ import {
   ImageBackground,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 
@@ -12,9 +13,9 @@ import firebase from "../../Config";
 const database=firebase.database();
 const ref_all_accounts=database.ref("allaccounts");
 
-export default function ListAccount() {
+export default function ListAccount(props) {
   const [data, setdata] = useState([])
-
+  const userid = props.route.params.userid;
   useEffect(() => {
       ref_all_accounts.on("value",(snapshot)=>{
       var d=[];
@@ -52,6 +53,8 @@ export default function ListAccount() {
                 flexDirection: "row",
                 backgroundColor: "gray",
                 marginBottom: 3,
+                alignItems: "center",
+                justifyContent: "space-between",
               }}
             >
               <Image
@@ -60,8 +63,18 @@ export default function ListAccount() {
               ></Image>
               <Text> {item.Nom} </Text>
               <Text> {item.Pseudo} </Text>
+              <Text> {item.Email} </Text>
               <Text> {item.Numero} </Text>
-
+              <TouchableOpacity onPress={()=>{
+                props.navigation.navigate('Chat', {
+                  currentid: userid,secondid:item.Id
+                });
+              }}>
+                <Image
+                  style={{ width: 30, height: 30 }}
+                  source={require("../../assets/sendmsg.png")}
+                ></Image>
+              </TouchableOpacity>
             </View>
           );
         }}
