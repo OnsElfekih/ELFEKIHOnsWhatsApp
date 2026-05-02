@@ -8,11 +8,13 @@ import {
   TouchableOpacity,
   View,
   Alert,
+  Linking,
 } from "react-native";
 
 import firebase from "../Config";
 import { useEffect, useState } from "react";
 import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
 import { supabase } from "../Config";
 
 const database = firebase.database();
@@ -134,6 +136,41 @@ export default function Chat(props) {
     .catch((err) => Alert.alert("Erreur envoi", err.message));
   };
 
+  const sendLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission refusée', 'Accès à la localisation nécessaire.');
+        return;
+      }
+
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      const { latitude, longitude } = loc.coords;
+
+      if (!iddiscussion) {
+        Alert.alert("Erreur", "IDs manquants");
+        return;
+      }
+
+      const ref_chat = ref_all_messages.child(iddiscussion).child("chat");
+      // URL pour Google Maps Static API avec marqueur
+      const mapImageUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=15&size=300x300&markers=color:red%7C${latitude},${longitude}`;
+
+      ref_chat.push().set({
+        idsender: currentid,
+        idreceiver: secondid,
+        mapImageUrl: mapImageUrl,
+        latitude: latitude,
+        longitude: longitude,
+        isLocation: true,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      })
+      .catch((err) => Alert.alert("Erreur envoi localisation", err.message));
+    } catch (error) {
+      Alert.alert("Erreur", "Impossible de récupérer la position");
+    }
+  };
+
   return (
     <ImageBackground
       style={styles.container}
@@ -163,6 +200,26 @@ export default function Chat(props) {
                     style={{ width: 150, height: 150, borderRadius: 10, marginBottom: 4 }}
                     resizeMode="cover"
                   />
+                ) : item.isLocation ? (
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (item.latitude && item.longitude) {
+                        const mapsUrl = `https://www.google.com/maps?q=${item.latitude},${item.longitude}`;
+                        Linking.openURL(mapsUrl);
+                      }
+                    }}
+                  >
+                    <Image
+                      source={require("../assets/localisation.jpg")}
+                      style={{ width: 200, height: 200, borderRadius: 10, marginBottom: 4 }}
+                      resizeMode="cover"
+                    />
+                    <View style={{ alignItems: 'center', marginTop: 8 }}>
+                      <Text style={styles.locationText}>Lat: {item.latitude?.toFixed(4)}</Text>
+                      <Text style={styles.locationText}>Lon: {item.longitude?.toFixed(4)}</Text>
+                      <Text style={{ fontSize: 12, color: "#0066cc", marginTop: 4, fontWeight: 'bold' }}>Tap to view on Maps</Text>
+                    </View>
+                  </TouchableOpacity>
                 ) : (
                   <Text style={styles.messageText}>{String(item.message || "")}</Text>
                 )}
@@ -199,7 +256,7 @@ export default function Chat(props) {
           style={styles.input}
         />
 
-        <View style={{ flexDirection: "row" }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <TouchableOpacity onPress={sendMessage} style={styles.sendButton}>
             <Image
               source={require("../assets/sendmsg.png")}
@@ -207,9 +264,16 @@ export default function Chat(props) {
             />
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={pickImage} style={{ marginLeft: 8 }}>
+          <TouchableOpacity onPress={pickImage} style={styles.iconButton}>
             <Image
               source={require("../assets/appareilPhoto.jpg")}
+              style={{ width: 25, height: 25 }}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={sendLocation} style={styles.locationButton}>
+            <Image
+              source={require("../assets/localisation.jpg")}
               style={{ width: 25, height: 25 }}
             />
           </TouchableOpacity>
@@ -300,5 +364,24 @@ const styles = StyleSheet.create({
     padding: 10,
     justifyContent: "center",
     alignItems: "center",
+  },
+  iconButton: {
+    padding: 8,
+    borderRadius: 25,
+    backgroundColor: "rgba(0, 137, 123, 0.1)",
+  },
+  locationButton: {
+    padding: 6,
+    borderRadius: 25,
+    backgroundColor: "rgba(0, 137, 123, 0.15)",
+    minWidth: 40,
+    minHeight: 40,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  locationText: {
+    fontSize: 12,
+    color: "#004D40",
+    marginVertical: 2,
   },
 });
