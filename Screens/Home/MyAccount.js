@@ -1,7 +1,7 @@
 import * as ImagePicker from "expo-image-picker";
 import { StatusBar } from "expo-status-bar";
 import { set } from "firebase/database";
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import {
   Image,
   ImageBackground,
@@ -21,12 +21,29 @@ import {supabase} from "../../Config";
 
 export default function MyAccount(props) {
   const userid=props.route.params.userid;
+  const ref_my_account=ref_all_accounts.child(userid);
+
   //nekteb usess twali tjini toul useState
   const [Nom, setNom] = useState();
   const [Pseudo, setPseudo] = useState();
   const [Email, setEmail] = useState();
   const [Numero, setNumero] = useState();
   const [UrlImage, setUrlImage] = useState();
+
+  useEffect(() => {
+    ref_my_account.on("value", (snapshot) => {
+      var data = snapshot.val();
+      setPseudo(data.Pseudo);
+      setNom(data.Nom);
+      setEmail(data.Email);
+      setNumero(data.Numero);
+      setUrlImage(data.UrlImage);
+    });
+    return () => {
+      ref_my_account.off();
+    };
+  }, []);
+
 
    const pickImage = async () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
