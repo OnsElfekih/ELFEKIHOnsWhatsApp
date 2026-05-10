@@ -8,6 +8,7 @@ import {
   View,
 } from "react-native";
 import firebase from "../Config";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const auth = firebase.auth();
 
@@ -48,9 +49,14 @@ export default function Auth(props) {
           onPress={() => {
             auth
               .signInWithEmailAndPassword(email, password)
-              .then(() => {
+              .then(async () => {
                 const userid = auth.currentUser.uid;
-                props.navigation.navigate("Home", { userid: userid });
+
+                await AsyncStorage.setItem("userid", userid);
+
+                props.navigation.navigate("Home", {
+                  userid: userid,
+                });
               })
               .catch((error) => {
                 alert(error.message);
