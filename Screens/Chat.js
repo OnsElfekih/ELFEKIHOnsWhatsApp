@@ -262,6 +262,43 @@ export default function Chat(props) {
     setReactionModalVisible(false);
     setSelectedMessage(null);
   };
+  const deleteForMe = () => {
+    if (!iddiscussion || !selectedMessage) return;
+
+    ref_all_messages
+      .child(iddiscussion)
+      .child("chat")
+      .child(selectedMessage.key)
+      .child("deletedFor")
+      .child(currentid)
+      .set(true);
+
+    setReactionModalVisible(false);
+    setSelectedMessage(null);
+  };
+
+  const deleteForEveryone = () => {
+    if (!iddiscussion || !selectedMessage) return;
+
+    ref_all_messages
+      .child(iddiscussion)
+      .child("chat")
+      .child(selectedMessage.key)
+      .update({
+        message: "Supprimé pour tous",
+        imageUrl: null,
+        mapImageUrl: null,
+        latitude: null,
+        longitude: null,
+        isLocation: false,
+        deletedForEveryone: true,
+        reaction: null,
+        replyTo: null,
+      });
+
+    setReactionModalVisible(false);
+    setSelectedMessage(null);
+  };
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -278,8 +315,8 @@ export default function Chat(props) {
           data={data}
           keyExtractor={(item, index) => index.toString()}
           renderItem={({ item }) => {
+            const deletedForMe = item.deletedFor && item.deletedFor[currentid];
             const isSender = currentid === item.idsender;
-
             return (
               <View
                 style={[
@@ -298,87 +335,100 @@ export default function Chat(props) {
                     isSender ? styles.senderBubble : styles.receiverBubble,
                   ]}
                 >
-                  {item.replyTo && (
-                    <View style={styles.replyPreview}>
-                      <Text style={styles.replyPreviewTitle}>Réponse</Text>
-                      <Text style={styles.replyPreviewText}>
-                        {item.replyTo.message ? item.replyTo.message : "Image"}
-                      </Text>
-                    </View>
-                  )}
-                  {item.imageUrl ? (
-                    <TouchableOpacity
-                      onPress={() => {
-                        setVisibleImage(String(item.imageUrl));
-                        setIsImageModalVisible(true);
-                      }}
-                      onLongPress={() => {
-                        setSelectedMessage(item);
-                        setReactionModalVisible(true);
-                      }}
-                    >
-                      <Image
-                        source={{ uri: String(item.imageUrl) }}
-                        style={{
-                          width: 150,
-                          height: 150,
-                          borderRadius: 10,
-                          marginBottom: 4,
-                        }}
-                        resizeMode="cover"
-                      />
-                    </TouchableOpacity>
-                  ) : item.isLocation ? (
-                    <TouchableOpacity
-                      onPress={() => {
-                        if (item.latitude && item.longitude) {
-                          const mapsUrl = `https://www.google.com/maps?q=${item.latitude},${item.longitude}`;
-                          Linking.openURL(mapsUrl);
-                        }
-                      }}
-                      onLongPress={() => {
-                        setSelectedMessage(item);
-                        setReactionModalVisible(true);
-                      }}
-                    >
-                      <Image
-                        source={require("../assets/localisation.jpg")}
-                        style={{
-                          width: 200,
-                          height: 200,
-                          borderRadius: 10,
-                          marginBottom: 4,
-                        }}
-                        resizeMode="cover"
-                      />
-
-                      <View style={{ alignItems: "center", marginTop: 8 }}>
-                        <Text style={styles.locationText}>
-                          Lat: {item.latitude?.toFixed(4)}
-                        </Text>
-
-                        <Text style={styles.locationText}>
-                          Lon: {item.longitude?.toFixed(4)}
-                        </Text>
-
-                        <Text
-                          style={{
-                            fontSize: 12,
-                            color: "#0066cc",
-                            marginTop: 4,
-                            fontWeight: "bold",
+                  {deletedForMe ? (
+                    <Text style={styles.deletedMessageText}>
+                      Supprimé pour moi
+                    </Text>
+                  ) : item.deletedForEveryone ? (
+                    <Text style={styles.deletedMessageText}>
+                      Supprimé pour tous
+                    </Text>
+                  ) : (
+                    <>
+                      {item.replyTo && (
+                        <View style={styles.replyPreview}>
+                          <Text style={styles.replyPreviewTitle}>Réponse</Text>
+                          <Text style={styles.replyPreviewText}>
+                            {item.replyTo.message
+                              ? item.replyTo.message
+                              : "Image"}
+                          </Text>
+                        </View>
+                      )}
+                      {item.imageUrl ? (
+                        <TouchableOpacity
+                          onPress={() => {
+                            setVisibleImage(String(item.imageUrl));
+                            setIsImageModalVisible(true);
+                          }}
+                          onLongPress={() => {
+                            setSelectedMessage(item);
+                            setReactionModalVisible(true);
                           }}
                         >
-                          Tap to view on Maps
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  ) : (
-                    <Text style={styles.messageText}>
-                      {String(item.message || "")}
-                    </Text>
-                  )}
+                          <Image
+                            source={{ uri: String(item.imageUrl) }}
+                            style={{
+                              width: 150,
+                              height: 150,
+                              borderRadius: 10,
+                              marginBottom: 4,
+                            }}
+                            resizeMode="cover"
+                          />
+                        </TouchableOpacity>
+                      ) : item.isLocation ? (
+                        <TouchableOpacity
+                          onPress={() => {
+                            if (item.latitude && item.longitude) {
+                              const mapsUrl = `https://www.google.com/maps?q=${item.latitude},${item.longitude}`;
+                              Linking.openURL(mapsUrl);
+                            }
+                          }}
+                          onLongPress={() => {
+                            setSelectedMessage(item);
+                            setReactionModalVisible(true);
+                          }}
+                        >
+                          <Image
+                            source={require("../assets/localisation.jpg")}
+                            style={{
+                              width: 200,
+                              height: 200,
+                              borderRadius: 10,
+                              marginBottom: 4,
+                            }}
+                            resizeMode="cover"
+                          />
 
+                          <View style={{ alignItems: "center", marginTop: 8 }}>
+                            <Text style={styles.locationText}>
+                              Lat: {item.latitude?.toFixed(4)}
+                            </Text>
+
+                            <Text style={styles.locationText}>
+                              Lon: {item.longitude?.toFixed(4)}
+                            </Text>
+
+                            <Text
+                              style={{
+                                fontSize: 12,
+                                color: "#0066cc",
+                                marginTop: 4,
+                                fontWeight: "bold",
+                              }}
+                            >
+                              Tap to view on Maps
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      ) : (
+                        <Text style={styles.messageText}>
+                          {String(item.message || "")}
+                        </Text>
+                      )}
+                    </>
+                  )}
                   <Text style={styles.timeText}>{String(item.time || "")}</Text>
 
                   {item.reaction && (
@@ -409,10 +459,6 @@ export default function Chat(props) {
 
         {replyMessage && (
           <View style={styles.replyBox}>
-            <View style={styles.replyIconBox}>
-              <Ionicons name="return-down-forward" size={22} color="white" />
-            </View>
-
             <View style={styles.replyContent}>
               <Text style={styles.replyTitle}>Vous répondez à ce message</Text>
 
@@ -491,10 +537,10 @@ export default function Chat(props) {
           transparent={true}
           animationType="fade"
         >
-          <View style={styles.reactionModalContainer}>
-            <View style={styles.reactionBox}>
+          <View style={styles.actionModalContainer}>
+            <View style={styles.actionBox}>
               <TouchableOpacity
-                style={styles.closeReactionButton}
+                style={styles.closeActionButton}
                 onPress={() => {
                   setReactionModalVisible(false);
                   setSelectedMessage(null);
@@ -503,37 +549,57 @@ export default function Chat(props) {
                 <Ionicons name="close" size={22} color="#2B1B26" />
               </TouchableOpacity>
 
-              <TouchableOpacity onPress={() => addReaction("👍")}>
-                <Text style={styles.reactionIcon}>👍</Text>
+              <View style={styles.emojiRow}>
+                <TouchableOpacity onPress={() => addReaction("👍")}>
+                  <Text style={styles.reactionIcon}>👍</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => addReaction("❤️")}>
+                  <Text style={styles.reactionIcon}>❤️</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => addReaction("😂")}>
+                  <Text style={styles.reactionIcon}>😂</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => addReaction("😮")}>
+                  <Text style={styles.reactionIcon}>😮</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => addReaction("😢")}>
+                  <Text style={styles.reactionIcon}>😢</Text>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => {
+                  setReplyMessage(selectedMessage);
+                  setReactionModalVisible(false);
+                }}
+              >
+                <Ionicons name="return-down-forward" size={21} color="white" />
+                <Text style={styles.actionText}>Répondre</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity onPress={() => addReaction("❤️")}>
-                <Text style={styles.reactionIcon}>❤️</Text>
+              <TouchableOpacity
+                style={styles.actionButtonDark}
+                onPress={deleteForMe}
+              >
+                <Ionicons name="trash-outline" size={21} color="white" />
+                <Text style={styles.actionText}>Supprimer pour moi</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity onPress={() => addReaction("😂")}>
-                <Text style={styles.reactionIcon}>😂</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={() => addReaction("😮")}>
-                <Text style={styles.reactionIcon}>😮</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={() => addReaction("😢")}>
-                <Text style={styles.reactionIcon}>😢</Text>
-              </TouchableOpacity>
+              {selectedMessage?.idsender === currentid && (
+                <TouchableOpacity
+                  style={styles.actionButtonDanger}
+                  onPress={deleteForEveryone}
+                >
+                  <Ionicons name="ban-outline" size={21} color="white" />
+                  <Text style={styles.actionText}>Supprimer pour tous</Text>
+                </TouchableOpacity>
+              )}
             </View>
-
-            <TouchableOpacity
-              style={styles.replyActionButton}
-              onPress={() => {
-                setReplyMessage(selectedMessage);
-                setReactionModalVisible(false);
-              }}
-            >
-              <Ionicons name="return-down-forward" size={22} color="white" />
-              <Text style={styles.replyActionText}>Répondre</Text>
-            </TouchableOpacity>
           </View>
         </Modal>
         <Modal
@@ -784,32 +850,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  reactionText: {
-    fontSize: 18,
-    marginTop: 4,
-    alignSelf: "flex-end",
-  },
-
-  reactionModalContainer: {
-    flex: 1,
-    backgroundColor: "#0004",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  reactionBox: {
-    flexDirection: "row",
-    backgroundColor: "#FFF8FC",
-    borderRadius: 25,
-    padding: 12,
-    borderWidth: 2,
-    borderColor: "#B135A3",
-  },
-
-  reactionIcon: {
-    fontSize: 28,
-    marginHorizontal: 8,
-  },
   reactionBadge: {
     position: "absolute",
     bottom: -14,
@@ -922,5 +962,105 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "bold",
     marginLeft: 6,
+  },
+  deletedMessageText: {
+    fontSize: 14,
+    color: "#777",
+    fontStyle: "italic",
+  },
+
+  deleteMeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#3B1D33",
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 22,
+    marginTop: 10,
+  },
+
+  deleteAllButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#C62828",
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 22,
+    marginTop: 10,
+  },
+
+  deleteActionText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "bold",
+    marginLeft: 6,
+  },
+  actionModalContainer: {
+    flex: 1,
+    backgroundColor: "#0005",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  actionBox: {
+    width: "86%",
+    backgroundColor: "#FFF8FC",
+    borderRadius: 22,
+    padding: 18,
+    borderWidth: 2,
+    borderColor: "#B135A3",
+    alignItems: "center",
+  },
+
+  closeActionButton: {
+    position: "absolute",
+    top: 10,
+    right: 12,
+  },
+
+  emojiRow: {
+    flexDirection: "row",
+    marginTop: 16,
+    marginBottom: 18,
+  },
+
+  actionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#B135A3",
+    width: "100%",
+    paddingVertical: 11,
+    borderRadius: 14,
+    marginTop: 8,
+  },
+
+  actionButtonDark: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#3B1D33",
+    width: "100%",
+    paddingVertical: 11,
+    borderRadius: 14,
+    marginTop: 8,
+  },
+
+  actionButtonDanger: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#C62828",
+    width: "100%",
+    paddingVertical: 11,
+    borderRadius: 14,
+    marginTop: 8,
+  },
+
+  actionText: {
+    color: "white",
+    fontSize: 15,
+    fontWeight: "bold",
+    marginLeft: 8,
   },
 });
