@@ -41,7 +41,8 @@ export default function Chat(props) {
   const [reactionModalVisible, setReactionModalVisible] = useState(false);
 
   const [replyMessage, setReplyMessage] = useState(null);
-
+  const [mediaModalVisible, setMediaModalVisible] = useState(false);
+  const [mediaType, setMediaType] = useState("images");
   const iddiscussion =
     currentid && secondid
       ? currentid > secondid
@@ -312,6 +313,33 @@ export default function Chat(props) {
     setReactionModalVisible(false);
     setSelectedMessage(null);
   };
+  const getMediaData = () => {
+    if (mediaType === "images") {
+      return data.filter((item) => item.imageUrl);
+    }
+
+    if (mediaType === "videos") {
+      return data.filter((item) => item.videoUrl);
+    }
+
+    if (mediaType === "links") {
+      return data.filter((item) => {
+        const msg = String(item.message || "");
+
+        return msg.includes("http://") || msg.includes("https://");
+      });
+    }
+
+    if (mediaType === "pinned") {
+      return data.filter((item) => item.pinned);
+    }
+
+    if (mediaType === "locations") {
+      return data.filter((item) => item.isLocation);
+    }
+
+    return [];
+  };
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -323,6 +351,15 @@ export default function Chat(props) {
         source={require("../assets/backgroundimg1.jpg")}
       >
         <Text style={styles.title}>Chat</Text>
+        <TouchableOpacity
+          style={styles.mediaButton}
+          onPress={() => {
+            setMediaModalVisible(true);
+          }}
+        >
+          <Ionicons name="folder-open" size={20} color="white" />
+          <Text style={styles.mediaButtonText}>Médias partagés</Text>
+        </TouchableOpacity>
 
         <FlatList
           data={data}
@@ -550,6 +587,90 @@ export default function Chat(props) {
           </View>
         </View>
         <Modal
+          visible={mediaModalVisible}
+          transparent={true}
+          animationType="fade"
+        >
+          <View style={styles.mediaModalContainer}>
+            <View style={styles.mediaBox}>
+              <TouchableOpacity
+                style={styles.closeMediaButton}
+                onPress={() => {
+                  setMediaModalVisible(false);
+                }}
+              >
+                <Ionicons name="close" size={24} color="#2B1B26" />
+              </TouchableOpacity>
+
+              <Text style={styles.mediaTitle}>Historique partagé</Text>
+
+              <View style={styles.mediaTabs}>
+                <TouchableOpacity onPress={() => setMediaType("images")}>
+                  <Text style={styles.mediaTab}>Images</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => setMediaType("videos")}>
+                  <Text style={styles.mediaTab}>Vidéos</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => setMediaType("links")}>
+                  <Text style={styles.mediaTab}>Liens</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => setMediaType("pinned")}>
+                  <Text style={styles.mediaTab}>Épinglés</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => setMediaType("locations")}>
+                  <Text style={styles.mediaTab}>Localisations</Text>
+                </TouchableOpacity>
+              </View>
+
+              <FlatList
+                data={getMediaData()}
+                keyExtractor={(item, index) => index.toString()}
+                renderItem={({ item }) => {
+                  return (
+                    <TouchableOpacity
+                      style={styles.mediaItem}
+                      onPress={() => {
+                        if (item.imageUrl) {
+                          setVisibleImage(String(item.imageUrl));
+                          setIsImageModalVisible(true);
+                          setMediaModalVisible(false);
+                        } else if (item.isLocation) {
+                          Linking.openURL(
+                            `https://www.google.com/maps?q=${item.latitude},${item.longitude}`,
+                          );
+                        } else if (item.message) {
+                          Linking.openURL(String(item.message));
+                        }
+                      }}
+                    >
+                      {item.imageUrl ? (
+                        <Image
+                          source={{ uri: String(item.imageUrl) }}
+                          style={styles.mediaImage}
+                        />
+                      ) : item.isLocation ? (
+                        <Text style={styles.mediaText}>
+                          📍 Localisation partagée
+                        </Text>
+                      ) : item.pinned ? (
+                        <Text style={styles.mediaText}>
+                          📌 {item.message || "Message épinglé"}
+                        </Text>
+                      ) : (
+                        <Text style={styles.mediaText}>{item.message}</Text>
+                      )}
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            </View>
+          </View>
+        </Modal>
+        <Modal
           visible={reactionModalVisible}
           transparent={true}
           animationType="fade"
@@ -694,6 +815,92 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.primary,
   },
+  mediaButton: {
+    flexDirection: "row",
+    backgroundColor: "#B135A3",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    alignItems: "center",
+    marginBottom: 8,
+  },
+
+  mediaButtonText: {
+    color: "white",
+    fontWeight: "bold",
+    marginLeft: 6,
+  },
+
+  mediaModalContainer: {
+    flex: 1,
+    backgroundColor: "#0005",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  mediaBox: {
+    width: "92%",
+    height: "78%",
+    backgroundColor: "#FFF8FC",
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 2,
+    borderColor: "#B135A3",
+  },
+
+  closeMediaButton: {
+    position: "absolute",
+    right: 12,
+    top: 10,
+    zIndex: 10,
+  },
+
+  mediaTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#2B1B26",
+    textAlign: "center",
+    marginBottom: 12,
+  },
+
+  mediaTabs: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+
+  mediaTab: {
+    backgroundColor: "#B135A3",
+    color: "white",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    margin: 3,
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+
+  mediaItem: {
+    backgroundColor: "white",
+    padding: 10,
+    borderRadius: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "#B135A3",
+  },
+
+  mediaImage: {
+    width: 90,
+    height: 90,
+    borderRadius: 10,
+  },
+
+  mediaText: {
+    color: "#2B1B26",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
   actionButtonPin: {
     flexDirection: "row",
     alignItems: "center",
@@ -704,7 +911,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     marginTop: 8,
   },
-
   pinnedText: {
     fontSize: 12,
     color: "#B135A3",
