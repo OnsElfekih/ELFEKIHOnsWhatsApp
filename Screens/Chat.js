@@ -299,6 +299,19 @@ export default function Chat(props) {
     setReactionModalVisible(false);
     setSelectedMessage(null);
   };
+  const pinMessage = () => {
+    if (!iddiscussion || !selectedMessage) return;
+
+    ref_all_messages
+      .child(iddiscussion)
+      .child("chat")
+      .child(selectedMessage.key)
+      .child("pinned")
+      .set(true);
+
+    setReactionModalVisible(false);
+    setSelectedMessage(null);
+  };
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -317,6 +330,7 @@ export default function Chat(props) {
           renderItem={({ item }) => {
             const deletedForMe = item.deletedFor && item.deletedFor[currentid];
             const isSender = currentid === item.idsender;
+
             return (
               <View
                 style={[
@@ -428,6 +442,9 @@ export default function Chat(props) {
                         </Text>
                       )}
                     </>
+                  )}
+                  {item.pinned && (
+                    <Text style={styles.pinnedText}>📌 Message épinglé</Text>
                   )}
                   <Text style={styles.timeText}>{String(item.time || "")}</Text>
 
@@ -581,7 +598,13 @@ export default function Chat(props) {
                 <Ionicons name="return-down-forward" size={21} color="white" />
                 <Text style={styles.actionText}>Répondre</Text>
               </TouchableOpacity>
-
+              <TouchableOpacity
+                style={styles.actionButtonPin}
+                onPress={pinMessage}
+              >
+                <Ionicons name="pin" size={21} color="white" />
+                <Text style={styles.actionText}>Épingler</Text>
+              </TouchableOpacity>
               <TouchableOpacity
                 style={styles.actionButtonDark}
                 onPress={deleteForMe}
@@ -671,7 +694,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.primary,
   },
+  actionButtonPin: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#8E44AD",
+    width: "100%",
+    paddingVertical: 11,
+    borderRadius: 14,
+    marginTop: 8,
+  },
 
+  pinnedText: {
+    fontSize: 12,
+    color: "#B135A3",
+    fontWeight: "bold",
+    marginTop: 5,
+  },
   title: {
     fontWeight: "bold",
     fontSize: 28,
