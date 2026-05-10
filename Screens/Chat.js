@@ -256,25 +256,25 @@ export default function Chat(props) {
           style={styles.input}
         />
 
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <View style={styles.buttonsContainer}>
           <TouchableOpacity onPress={sendMessage} style={styles.sendButton}>
             <Image
               source={require("../assets/sendmsg.png")}
-              style={{ width: 25, height: 25, tintColor: '#fff' }}
+              style={{ width: 20, height: 20, tintColor: '#fff' }}
             />
           </TouchableOpacity>
 
           <TouchableOpacity onPress={pickImage} style={styles.iconButton}>
             <Image
               source={require("../assets/appareilPhoto.jpg")}
-              style={{ width: 25, height: 25 }}
+              style={{ width: 20, height: 20 }}
             />
           </TouchableOpacity>
 
           <TouchableOpacity onPress={sendLocation} style={styles.locationButton}>
             <Image
               source={require("../assets/localisation.jpg")}
-              style={{ width: 25, height: 25 }}
+              style={{ width: 20, height: 20 }}
             />
           </TouchableOpacity>
         </View>
@@ -321,6 +321,11 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: "#C9A84C",
   },
+  buttonsContainer: {
+  flexDirection: "row",
+  alignItems: "center",
+  marginLeft: 5,
+},
   messageText: {
     fontSize: 15,
     color: "#004D40",
@@ -337,48 +342,50 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     marginBottom: 8,
   },
-  inputContainer: {
-    height: 65,
-    width: "100%",
-    marginBottom: 20,
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-evenly",
-    backgroundColor: "rgba(255,255,255,0.88)",
-    paddingHorizontal: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#B2DFDB",
-  },
-  input: {
-    backgroundColor: "#F1FFFE",
-    width: "78%",
-    borderRadius: 25,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: "#004D40",
-  },
-  sendButton: {
-    backgroundColor: "#00897B",
-    borderRadius: 50,
-    padding: 10,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  iconButton: {
-    padding: 8,
-    borderRadius: 25,
-    backgroundColor: "rgba(0, 137, 123, 0.1)",
-  },
-  locationButton: {
-    padding: 6,
-    borderRadius: 25,
-    backgroundColor: "rgba(0, 137, 123, 0.15)",
-    minWidth: 40,
-    minHeight: 40,
-    justifyContent: "center",
-    alignItems: "center",
-  },
+inputContainer: {
+  flexDirection: "row",
+  alignItems: "center",
+  paddingHorizontal: 6,
+  paddingVertical: 6,
+  backgroundColor: "rgba(255,255,255,0.9)",
+},
+input: {
+  flex: 1,
+  height: 38,
+  backgroundColor: "#F1FFFE",
+  borderRadius: 20,
+  paddingHorizontal: 10,
+  fontSize: 13,
+},
+sendButton: {
+  width: 36,
+  height: 36,
+  borderRadius: 18,
+  backgroundColor: "#00897B",
+  justifyContent: "center",
+  alignItems: "center",
+  marginLeft: 4,
+},
+
+iconButton: {
+  width: 36,
+  height: 36,
+  borderRadius: 18,
+  backgroundColor: "#e0f2f1",
+  justifyContent: "center",
+  alignItems: "center",
+  marginLeft: 4,
+},
+
+locationButton: {
+  width: 36,
+  height: 36,
+  borderRadius: 18,
+  backgroundColor: "#d0f0ef",
+  justifyContent: "center",
+  alignItems: "center",
+  marginLeft: 4,
+},
   locationText: {
     fontSize: 12,
     color: "#004D40",
