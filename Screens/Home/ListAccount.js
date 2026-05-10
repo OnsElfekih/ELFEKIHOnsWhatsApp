@@ -8,7 +8,9 @@ import {
   View,
   Modal,
   Pressable,
+  Linking,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 import { useEffect, useState } from "react";
 import firebase from "../../Config";
@@ -77,20 +79,37 @@ export default function ListAccount(props) {
                 <Text style={styles.numero}>{item.Numero}</Text>
               </View>
 
-              <TouchableOpacity
-                style={styles.chatButton}
-                onPress={() => {
-                  props.navigation.navigate("Chat", {
-                    currentid: userid,
-                    secondid: item.Id,
-                  });
-                }}
-              >
-                <Image
-                  style={styles.chatIcon}
-                  source={require("../../assets/sendmsg.png")}
-                />
-              </TouchableOpacity>
+              <View style={styles.actionsBox}>
+                <TouchableOpacity
+                  style={styles.callButton}
+                  onPress={() => {
+                    Linking.openURL(`tel:${item.Numero}`);
+                  }}
+                >
+                  <Ionicons name="call" size={18} color="white" />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.emailButton}
+                  onPress={() => {
+                    Linking.openURL(`mailto:${item.Email}`);
+                  }}
+                >
+                  <Ionicons name="mail" size={18} color="white" />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.chatButton}
+                  onPress={() => {
+                    props.navigation.navigate("Chat", {
+                      currentid: userid,
+                      secondid: item.Id,
+                    });
+                  }}
+                >
+                  <Ionicons name="chatbubble" size={18} color="white" />
+                </TouchableOpacity>
+              </View>
             </View>
           );
         }}
@@ -164,55 +183,73 @@ const styles = StyleSheet.create({
   },
 
   profileImage: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     borderWidth: 2,
     borderColor: "#B135A3",
   },
 
   infoBox: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: 10,
   },
 
   name: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "bold",
     color: "#2B1B26",
   },
 
   pseudo: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#B135A3",
     marginTop: 2,
   },
 
   email: {
-    fontSize: 13,
+    fontSize: 12,
     color: "#333",
     marginTop: 2,
   },
 
   numero: {
-    fontSize: 13,
+    fontSize: 12,
     color: "#333",
     marginTop: 2,
   },
 
-  chatButton: {
-    backgroundColor: "#B135A3",
-    width: 45,
-    height: 45,
-    borderRadius: 23,
+  actionsBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+
+  callButton: {
+    backgroundColor: "#3B1D33",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
   },
 
-  chatIcon: {
-    width: 24,
-    height: 24,
-    tintColor: "#fff",
+  emailButton: {
+    backgroundColor: "#6D2E5B",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  chatButton: {
+    backgroundColor: "#B135A3",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   modalContainer: {
