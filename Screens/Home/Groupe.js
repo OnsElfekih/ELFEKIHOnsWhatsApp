@@ -1,5 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native'
-import React from 'react'
+import { StyleSheet, Text, View } from "react-native";
+import React from "react";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function Groupe() {
@@ -7,7 +7,7 @@ export default function Groupe() {
     <View>
       <Text>Groupe</Text>
     </View>
-  )
+  );
 }
 
-const styles = StyleSheet.create({})
+const styles = StyleSheet.create({});

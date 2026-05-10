@@ -11,8 +11,10 @@ import {
   Linking,
   KeyboardAvoidingView,
   Platform,
+  Modal,
 } from "react-native";
-
+import * as MediaLibrary from "expo-media-library";
+import * as FileSystem from "expo-file-system";
 import firebase from "../Config";
 import { useEffect, useState } from "react";
 import * as ImagePicker from "expo-image-picker";
@@ -30,6 +32,9 @@ export default function Chat(props) {
   const [data, setdata] = useState([]);
   const [message, setMessage] = useState("");
   const [secondistyping, setSecondistyping] = useState(false);
+
+  const [visibleImage, setVisibleImage] = useState(null);
+  const [isImageModalVisible, setIsImageModalVisible] = useState(false);
 
   const iddiscussion =
     currentid && secondid
@@ -162,7 +167,27 @@ export default function Chat(props) {
 
       .catch((err) => Alert.alert("Erreur envoi", err.message));
   };
+  const downloadMedia = async (url, type = "image") => {
+    try {
+      const permission = await MediaLibrary.requestPermissionsAsync();
 
+      if (!permission.granted) {
+        Alert.alert("Permission refusée", "Autorisez l'accès aux fichiers.");
+        return;
+      }
+
+      const filename = Date.now() + (type === "video" ? ".mp4" : ".jpg");
+      const fileUri = FileSystem.documentDirectory + filename;
+
+      const downloadResult = await FileSystem.downloadAsync(url, fileUri);
+
+      await MediaLibrary.saveToLibraryAsync(downloadResult.uri);
+
+      Alert.alert("Succès", "Image téléchargée dans la galerie");
+    } catch (error) {
+      Alert.alert("Erreur téléchargement", error.message);
+    }
+  };
   const sendLocation = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -239,16 +264,23 @@ export default function Chat(props) {
                   ]}
                 >
                   {item.imageUrl ? (
-                    <Image
-                      source={{ uri: String(item.imageUrl) }}
-                      style={{
-                        width: 150,
-                        height: 150,
-                        borderRadius: 10,
-                        marginBottom: 4,
-                      }}
-                      resizeMode="cover"
-                    />
+<TouchableOpacity
+onPress={() => {
+  setVisibleImage(String(item.imageUrl));
+  setIsImageModalVisible(true);
+}}
+>
+  <Image
+    source={{ uri: String(item.imageUrl) }}
+    style={{
+      width: 150,
+      height: 150,
+      borderRadius: 10,
+      marginBottom: 4,
+    }}
+    resizeMode="cover"
+  />
+</TouchableOpacity>
                   ) : item.isLocation ? (
                     <TouchableOpacity
                       onPress={() => {
@@ -356,6 +388,68 @@ export default function Chat(props) {
             </TouchableOpacity>
           </View>
         </View>
+<Modal
+  visible={isImageModalVisible}
+  transparent={true}
+  animationType="fade"
+>
+  <View style={styles.fullScreenContainer}>
+
+    <TouchableOpacity
+      style={styles.closeImageButton}
+      onPress={() => {
+        setIsImageModalVisible(false);
+      }}
+    >
+      <Ionicons name="close" size={35} color="white" />
+    </TouchableOpacity>
+
+<View style={styles.imageBox}>
+
+  {visibleImage && (
+
+    <Image
+      source={{ uri: visibleImage }}
+      style={styles.fullScreenImage}
+      resizeMode="contain"
+    />
+
+  )}
+
+  <TouchableOpacity
+    style={styles.downloadButton}
+    onPress={() => {
+      Alert.alert(
+        "Téléchargement",
+        "Télécharger cette image ?",
+        [
+          {
+            text: "Annuler",
+            style: "cancel",
+          },
+          {
+            text: "Télécharger",
+            onPress: () => {
+              Linking.openURL(visibleImage);
+            },
+          },
+        ]
+      );
+    }}
+  >
+
+    <Ionicons
+      name="download"
+      size={24}
+      color="white"
+    />
+
+  </TouchableOpacity>
+
+</View>
+
+  </View>
+</Modal>
       </ImageBackground>
     </KeyboardAvoidingView>
   );
@@ -519,4 +613,49 @@ const styles = StyleSheet.create({
     color: colors.textDark,
     marginVertical: 2,
   },
+
+closeImageButton: {
+  position: "absolute",
+  top: 45,
+  right: 20,
+  zIndex: 10,
+},
+
+fullScreenContainer: {
+  flex: 1,
+  backgroundColor: "#000",
+  justifyContent: "center",
+  alignItems: "center",
+},
+
+imageBox: {
+  width: "100%",
+  height: "100%",
+  justifyContent: "center",
+  alignItems: "center",
+},
+
+closeImageButton: {
+  position: "absolute",
+  top: 45,
+  right: 20,
+  zIndex: 10,
+},
+
+fullScreenImage: {
+  width: 350,
+  height: 500,
+},
+
+downloadButton: {
+  position: "absolute",
+  bottom: 35,
+  right: 25,
+  backgroundColor: "#B135A3",
+  width: 50,
+  height: 50,
+  borderRadius: 25,
+  justifyContent: "center",
+  alignItems: "center",
+},
 });
