@@ -16,6 +16,7 @@ import { useEffect, useState } from "react";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { supabase } from "../Config";
+import { Ionicons } from "@expo/vector-icons";
 
 const database = firebase.database();
 const ref_all_messages = database.ref("allmessages");
