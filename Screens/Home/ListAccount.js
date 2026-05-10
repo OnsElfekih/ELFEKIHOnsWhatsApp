@@ -88,6 +88,14 @@ export default function ListAccount(props) {
                 >
                   <Ionicons name="call" size={18} color="white" />
                 </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.smsButton}
+                  onPress={() => {
+                    Linking.openURL(`sms:${item.Numero}`);
+                  }}
+                >
+                  <Ionicons name="chatbox-ellipses" size={18} color="white" />
+                </TouchableOpacity>
 
                 <TouchableOpacity
                   style={styles.emailButton}
@@ -161,7 +169,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingTop: 35,
   },
-
+  smsButton: {
+    backgroundColor: "#8E44AD",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   title: {
     fontWeight: "bold",
     fontSize: 28,
