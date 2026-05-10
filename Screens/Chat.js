@@ -43,6 +43,10 @@ export default function Chat(props) {
   const [replyMessage, setReplyMessage] = useState(null);
   const [mediaModalVisible, setMediaModalVisible] = useState(false);
   const [mediaType, setMediaType] = useState("images");
+
+  const [nicknameModalVisible, setNicknameModalVisible] = useState(false);
+  const [nickname, setNickname] = useState("");
+  const [savedNickname, setSavedNickname] = useState("");
   const iddiscussion =
     currentid && secondid
       ? currentid > secondid
@@ -51,6 +55,14 @@ export default function Chat(props) {
       : null;
 
   useEffect(() => {
+    const ref_nickname = ref_all_messages
+      .child(iddiscussion)
+      .child("nicknames")
+      .child(secondid);
+
+    ref_nickname.on("value", (snapshot) => {
+      setSavedNickname(snapshot.val() || "");
+    });
     if (!iddiscussion) return;
 
     const ref_chat = ref_all_messages.child(iddiscussion).child("chat");
@@ -76,6 +88,7 @@ export default function Chat(props) {
     return () => {
       ref_chat.off();
       ref_second_istyping.off();
+      ref_nickname.off();
     };
   }, [iddiscussion, secondid]);
 
@@ -340,6 +353,19 @@ export default function Chat(props) {
 
     return [];
   };
+  const saveNickname = () => {
+    if (!iddiscussion) return;
+
+    ref_all_messages
+      .child(iddiscussion)
+      .child("nicknames")
+      .child(secondid)
+      .set(nickname);
+
+    setSavedNickname(nickname);
+    setNickname("");
+    setNicknameModalVisible(false);
+  };
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -350,7 +376,16 @@ export default function Chat(props) {
         style={styles.container}
         source={require("../assets/backgroundimg1.jpg")}
       >
-        <Text style={styles.title}>Chat</Text>
+        <TouchableOpacity
+          onLongPress={() => {
+            setNickname(savedNickname);
+            setNicknameModalVisible(true);
+          }}
+        >
+          <Text style={styles.title}>
+            {savedNickname ? savedNickname : "Chat"}
+          </Text>
+        </TouchableOpacity>
         <TouchableOpacity
           style={styles.mediaButton}
           onPress={() => {
@@ -586,6 +621,43 @@ export default function Chat(props) {
             </TouchableOpacity>
           </View>
         </View>
+        <Modal
+          visible={nicknameModalVisible}
+          transparent={true}
+          animationType="fade"
+        >
+          <View style={styles.nicknameModalContainer}>
+            <View style={styles.nicknameBox}>
+              <Text style={styles.nicknameTitle}>Modifier le surnom</Text>
+
+              <TextInput
+                value={nickname}
+                onChangeText={(txt) => {
+                  setNickname(txt);
+                }}
+                placeholder="Entrer un surnom..."
+                placeholderTextColor="#777"
+                style={styles.nicknameInput}
+              />
+
+              <TouchableOpacity
+                style={styles.nicknameSaveButton}
+                onPress={saveNickname}
+              >
+                <Text style={styles.nicknameSaveText}>Enregistrer</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.nicknameCancelButton}
+                onPress={() => {
+                  setNicknameModalVisible(false);
+                }}
+              >
+                <Text style={styles.nicknameCancelText}>Annuler</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
         <Modal
           visible={mediaModalVisible}
           transparent={true}
@@ -1307,5 +1379,64 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "bold",
     marginLeft: 8,
+  },
+  nicknameModalContainer: {
+    flex: 1,
+    backgroundColor: "#0005",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  nicknameBox: {
+    width: "84%",
+    backgroundColor: "#FFF8FC",
+    borderRadius: 18,
+    padding: 20,
+    borderWidth: 2,
+    borderColor: "#B135A3",
+  },
+
+  nicknameTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#2B1B26",
+    marginBottom: 14,
+    textAlign: "center",
+  },
+
+  nicknameInput: {
+    backgroundColor: "white",
+    borderWidth: 1,
+    borderColor: "#B135A3",
+    borderRadius: 12,
+    height: 48,
+    paddingHorizontal: 12,
+    color: "#2B1B26",
+    marginBottom: 14,
+  },
+
+  nicknameSaveButton: {
+    backgroundColor: "#B135A3",
+    height: 45,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  nicknameSaveText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+
+  nicknameCancelButton: {
+    marginTop: 10,
+    alignItems: "center",
+  },
+
+  nicknameCancelText: {
+    color: "#777",
+    fontSize: 15,
+    fontWeight: "bold",
   },
 });
