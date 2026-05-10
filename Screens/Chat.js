@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Modal,
+  Pressable,
 } from "react-native";
 import * as MediaLibrary from "expo-media-library";
 import * as FileSystem from "expo-file-system";
@@ -36,6 +37,9 @@ export default function Chat(props) {
   const [visibleImage, setVisibleImage] = useState(null);
   const [isImageModalVisible, setIsImageModalVisible] = useState(false);
 
+  const [selectedMessage, setSelectedMessage] = useState(null);
+  const [reactionModalVisible, setReactionModalVisible] = useState(false);
+
   const iddiscussion =
     currentid && secondid
       ? currentid > secondid
@@ -54,7 +58,10 @@ export default function Chat(props) {
     ref_chat.on("value", (snapshot) => {
       const d = [];
       snapshot.forEach((one_message) => {
-        d.push(one_message.val());
+        d.push({
+          key: one_message.key,
+          ...one_message.val(),
+        });
       });
       setdata(d);
     });
@@ -232,7 +239,19 @@ export default function Chat(props) {
       Alert.alert("Erreur", "Impossible de récupérer la position");
     }
   };
+  const addReaction = (reaction) => {
+    if (!iddiscussion || !selectedMessage) return;
 
+    ref_all_messages
+      .child(iddiscussion)
+      .child("chat")
+      .child(selectedMessage.key)
+      .child("reaction")
+      .set(reaction);
+
+    setReactionModalVisible(false);
+    setSelectedMessage(null);
+  };
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -250,6 +269,7 @@ export default function Chat(props) {
           keyExtractor={(item, index) => index.toString()}
           renderItem={({ item }) => {
             const isSender = currentid === item.idsender;
+
             return (
               <View
                 style={[
@@ -257,30 +277,39 @@ export default function Chat(props) {
                   isSender ? styles.senderWrapper : styles.receiverWrapper,
                 ]}
               >
-                <View
+                <Pressable
+                  onLongPress={() => {
+                    setSelectedMessage(item);
+                    setReactionModalVisible(true);
+                  }}
+                  delayLongPress={400}
                   style={[
                     styles.bubble,
                     isSender ? styles.senderBubble : styles.receiverBubble,
                   ]}
                 >
                   {item.imageUrl ? (
-<TouchableOpacity
-onPress={() => {
-  setVisibleImage(String(item.imageUrl));
-  setIsImageModalVisible(true);
-}}
->
-  <Image
-    source={{ uri: String(item.imageUrl) }}
-    style={{
-      width: 150,
-      height: 150,
-      borderRadius: 10,
-      marginBottom: 4,
-    }}
-    resizeMode="cover"
-  />
-</TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setVisibleImage(String(item.imageUrl));
+                        setIsImageModalVisible(true);
+                      }}
+                      onLongPress={() => {
+                        setSelectedMessage(item);
+                        setReactionModalVisible(true);
+                      }}
+                    >
+                      <Image
+                        source={{ uri: String(item.imageUrl) }}
+                        style={{
+                          width: 150,
+                          height: 150,
+                          borderRadius: 10,
+                          marginBottom: 4,
+                        }}
+                        resizeMode="cover"
+                      />
+                    </TouchableOpacity>
                   ) : item.isLocation ? (
                     <TouchableOpacity
                       onPress={() => {
@@ -288,6 +317,10 @@ onPress={() => {
                           const mapsUrl = `https://www.google.com/maps?q=${item.latitude},${item.longitude}`;
                           Linking.openURL(mapsUrl);
                         }
+                      }}
+                      onLongPress={() => {
+                        setSelectedMessage(item);
+                        setReactionModalVisible(true);
                       }}
                     >
                       <Image
@@ -300,13 +333,16 @@ onPress={() => {
                         }}
                         resizeMode="cover"
                       />
+
                       <View style={{ alignItems: "center", marginTop: 8 }}>
                         <Text style={styles.locationText}>
                           Lat: {item.latitude?.toFixed(4)}
                         </Text>
+
                         <Text style={styles.locationText}>
                           Lon: {item.longitude?.toFixed(4)}
                         </Text>
+
                         <Text
                           style={{
                             fontSize: 12,
@@ -326,14 +362,29 @@ onPress={() => {
                   )}
 
                   <Text style={styles.timeText}>{String(item.time || "")}</Text>
-                </View>
+
+                  {item.reaction && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        ref_all_messages
+                          .child(iddiscussion)
+                          .child("chat")
+                          .child(item.key)
+                          .child("reaction")
+                          .remove();
+                      }}
+                      style={styles.reactionBadge}
+                    >
+                      <Text style={styles.reactionText}>{item.reaction}</Text>
+                    </TouchableOpacity>
+                  )}
+                </Pressable>
               </View>
             );
           }}
           style={styles.list}
           contentContainerStyle={{ paddingVertical: 8 }}
         />
-
         {secondistyping && (
           <Text style={styles.typingText}>en train d'écrire...</Text>
         )}
@@ -388,68 +439,91 @@ onPress={() => {
             </TouchableOpacity>
           </View>
         </View>
-<Modal
-  visible={isImageModalVisible}
-  transparent={true}
-  animationType="fade"
->
-  <View style={styles.fullScreenContainer}>
+        <Modal
+          visible={reactionModalVisible}
+          transparent={true}
+          animationType="fade"
+        >
+          <View style={styles.reactionModalContainer}>
+            <View style={styles.reactionBox}>
+              <TouchableOpacity
+                style={styles.closeReactionButton}
+                onPress={() => {
+                  setReactionModalVisible(false);
+                  setSelectedMessage(null);
+                }}
+              >
+                <Ionicons name="close" size={22} color="#2B1B26" />
+              </TouchableOpacity>
 
-    <TouchableOpacity
-      style={styles.closeImageButton}
-      onPress={() => {
-        setIsImageModalVisible(false);
-      }}
-    >
-      <Ionicons name="close" size={35} color="white" />
-    </TouchableOpacity>
+              <TouchableOpacity onPress={() => addReaction("👍")}>
+                <Text style={styles.reactionIcon}>👍</Text>
+              </TouchableOpacity>
 
-<View style={styles.imageBox}>
+              <TouchableOpacity onPress={() => addReaction("❤️")}>
+                <Text style={styles.reactionIcon}>❤️</Text>
+              </TouchableOpacity>
 
-  {visibleImage && (
+              <TouchableOpacity onPress={() => addReaction("😂")}>
+                <Text style={styles.reactionIcon}>😂</Text>
+              </TouchableOpacity>
 
-    <Image
-      source={{ uri: visibleImage }}
-      style={styles.fullScreenImage}
-      resizeMode="contain"
-    />
+              <TouchableOpacity onPress={() => addReaction("😮")}>
+                <Text style={styles.reactionIcon}>😮</Text>
+              </TouchableOpacity>
 
-  )}
+              <TouchableOpacity onPress={() => addReaction("😢")}>
+                <Text style={styles.reactionIcon}>😢</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+        <Modal
+          visible={isImageModalVisible}
+          transparent={true}
+          animationType="fade"
+        >
+          <View style={styles.fullScreenContainer}>
+            <TouchableOpacity
+              style={styles.closeImageButton}
+              onPress={() => {
+                setIsImageModalVisible(false);
+              }}
+            >
+              <Ionicons name="close" size={35} color="white" />
+            </TouchableOpacity>
 
-  <TouchableOpacity
-    style={styles.downloadButton}
-    onPress={() => {
-      Alert.alert(
-        "Téléchargement",
-        "Télécharger cette image ?",
-        [
-          {
-            text: "Annuler",
-            style: "cancel",
-          },
-          {
-            text: "Télécharger",
-            onPress: () => {
-              Linking.openURL(visibleImage);
-            },
-          },
-        ]
-      );
-    }}
-  >
+            <View style={styles.imageBox}>
+              {visibleImage && (
+                <Image
+                  source={{ uri: visibleImage }}
+                  style={styles.fullScreenImage}
+                  resizeMode="contain"
+                />
+              )}
 
-    <Ionicons
-      name="download"
-      size={24}
-      color="white"
-    />
-
-  </TouchableOpacity>
-
-</View>
-
-  </View>
-</Modal>
+              <TouchableOpacity
+                style={styles.downloadButton}
+                onPress={() => {
+                  Alert.alert("Téléchargement", "Télécharger cette image ?", [
+                    {
+                      text: "Annuler",
+                      style: "cancel",
+                    },
+                    {
+                      text: "Télécharger",
+                      onPress: () => {
+                        Linking.openURL(visibleImage);
+                      },
+                    },
+                  ]);
+                }}
+              >
+                <Ionicons name="download" size={24} color="white" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </ImageBackground>
     </KeyboardAvoidingView>
   );
@@ -495,7 +569,7 @@ const styles = StyleSheet.create({
   messageWrapper: {
     width: "100%",
     paddingHorizontal: 10,
-    marginVertical: 4,
+    marginVertical: 8,
     flexDirection: "row",
   },
 
@@ -512,6 +586,7 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     paddingHorizontal: 13,
     borderRadius: 16,
+    marginBottom: 5,
   },
 
   senderBubble: {
@@ -614,48 +689,111 @@ const styles = StyleSheet.create({
     marginVertical: 2,
   },
 
-closeImageButton: {
-  position: "absolute",
-  top: 45,
-  right: 20,
-  zIndex: 10,
-},
+  closeImageButton: {
+    position: "absolute",
+    top: 45,
+    right: 20,
+    zIndex: 10,
+  },
 
-fullScreenContainer: {
-  flex: 1,
-  backgroundColor: "#000",
-  justifyContent: "center",
-  alignItems: "center",
-},
+  fullScreenContainer: {
+    flex: 1,
+    backgroundColor: "#000",
+    justifyContent: "center",
+    alignItems: "center",
+  },
 
-imageBox: {
-  width: "100%",
-  height: "100%",
-  justifyContent: "center",
-  alignItems: "center",
-},
+  imageBox: {
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
 
-closeImageButton: {
-  position: "absolute",
-  top: 45,
-  right: 20,
-  zIndex: 10,
-},
+  fullScreenImage: {
+    width: 350,
+    height: 500,
+  },
 
-fullScreenImage: {
-  width: 350,
-  height: 500,
-},
+  downloadButton: {
+    position: "absolute",
+    bottom: 35,
+    right: 25,
+    backgroundColor: "#B135A3",
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  reactionText: {
+    fontSize: 18,
+    marginTop: 4,
+    alignSelf: "flex-end",
+  },
 
-downloadButton: {
-  position: "absolute",
-  bottom: 35,
-  right: 25,
-  backgroundColor: "#B135A3",
-  width: 50,
-  height: 50,
-  borderRadius: 25,
-  justifyContent: "center",
-  alignItems: "center",
-},
+  reactionModalContainer: {
+    flex: 1,
+    backgroundColor: "#0004",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  reactionBox: {
+    flexDirection: "row",
+    backgroundColor: "#FFF8FC",
+    borderRadius: 25,
+    padding: 12,
+    borderWidth: 2,
+    borderColor: "#B135A3",
+  },
+
+  reactionIcon: {
+    fontSize: 28,
+    marginHorizontal: 8,
+  },
+  reactionBadge: {
+    position: "absolute",
+    bottom: -14,
+    right: 8,
+    backgroundColor: "#FFF8FC",
+    borderRadius: 14,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: "#B135A3",
+  },
+
+  reactionText: {
+    fontSize: 16,
+  },
+
+  reactionModalContainer: {
+    flex: 1,
+    backgroundColor: "#0004",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  reactionBox: {
+    flexDirection: "row",
+    backgroundColor: "#FFF8FC",
+    borderRadius: 25,
+    padding: 12,
+    paddingLeft: 36,
+    borderWidth: 2,
+    borderColor: "#B135A3",
+    position: "relative",
+  },
+
+  closeReactionButton: {
+    position: "absolute",
+    left: 8,
+    top: 13,
+  },
+
+  reactionIcon: {
+    fontSize: 28,
+    marginHorizontal: 8,
+  },
 });
