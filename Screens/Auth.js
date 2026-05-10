@@ -1,64 +1,135 @@
-import { StatusBar } from 'expo-status-bar';
-import { Button, ImageBackground, StyleSheet, Text, TextInput, View } from 'react-native';
-import firebase from '../Config';
+import { StatusBar } from "expo-status-bar";
+import {
+  Button,
+  ImageBackground,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import firebase from "../Config";
 
-const auth=firebase.auth();
+const auth = firebase.auth();
+
 export default function Auth(props) {
-  var email="elfekihons@gmail.com",password="elfekihons";
+  var email = props.route.params?.email || "elfekihons@gmail.com",
+    password = "elfekihons";
+
   return (
-    <ImageBackground source={require("../assets/backgroundimg1.jpg")} style={styles.container}>
+    <ImageBackground
+      source={require("../assets/backgroundimg1.jpg")}
+      style={styles.container}
+    >
       <View style={styles.view}>
-      <Text style={styles.text}>Welcome!</Text>
-      <TextInput onChangeText={(txt)=>{email=txt}} keyboardType="email-address" style={styles.input} placeholder="email@address.com"></TextInput>
-      <TextInput onChangeText={(txt)=>{password=txt}} style={styles.input} placeholder="**password**"></TextInput>
-      <Button onPress={()=>{
-       
-          auth.signInWithEmailAndPassword(email,password)
-        .then(()=>{
-          const userid=auth.currentUser.uid;
-          props.navigation.navigate('Home', {userid: userid});
-        })
-        .catch((error)=>{alert(error)});
-        }}
-       
-         title="Submit" color="#b135a3"></Button>
-      <Text onPress={()=>{props.navigation.navigate('SignUp')}}>Create a new account</Text>
+        <Text style={styles.text}>Connexion</Text>
+
+        <TextInput
+          defaultValue={email}
+          onChangeText={(txt) => {
+            email = txt;
+          }}
+          keyboardType="email-address"
+          style={styles.input}
+          placeholder="Email"
+          placeholderTextColor="#777"
+        />
+
+        <TextInput
+          onChangeText={(txt) => {
+            password = txt;
+          }}
+          style={styles.input}
+          placeholder="Mot de passe"
+          placeholderTextColor="#777"
+          secureTextEntry={true}
+        />
+
+        <Button
+          onPress={() => {
+            auth
+              .signInWithEmailAndPassword(email, password)
+              .then(() => {
+                const userid = auth.currentUser.uid;
+                props.navigation.navigate("Home", { userid: userid });
+              })
+              .catch((error) => {
+                alert(error.message);
+              });
+          }}
+          title="Se connecter"
+          color="#b135a3"
+        />
+
+        <Text
+          style={styles.link}
+          onPress={() => {
+            props.navigation.navigate("SignUp");
+          }}
+        >
+          Créer un nouveau compte
+        </Text>
       </View>
+
       <StatusBar style="auto" />
     </ImageBackground>
   );
 }
 
+const colors = {
+  primary: "#6D2E5B",
+  primaryDark: "#3B1D33",
+  primaryLight: "#B135A3",
+  card: "#0006",
+  input: "#FFF8FC",
+  textDark: "#2B1B26",
+  textLight: "#FFFFFF",
+  border: "#B135A3",
+  muted: "#777",
+};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#785274',
-    alignItems: 'center', //align horizontal
-    justifyContent: 'center', //align vertical
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  text: {
-    backgroundColor: '#786852',
-    color: 'white',
-    fontSize: 30,
-    padding: 10,
-    fontStyle: 'italic',
-    fontWeight: 'bold',
-  },
-  input: {
-    backgroundColor: 'white',
-    width: "95%",
-    height: 45,
-    backgroundColor: 'white',
-    marginBottom: 8,
-    borderRadius: 7,
-    textAlign: 'center',
-  },
+
   view: {
-    backgroundColor: '#0004',
-    width: "90%",
-    height: 300,
+    backgroundColor: colors.card,
+    width: "88%",
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+  },
+
+  text: {
+    color: colors.textLight,
+    fontSize: 32,
+    padding: 10,
+    fontStyle: "italic",
+    fontWeight: "bold",
+    marginBottom: 15,
+  },
+
+  input: {
+    backgroundColor: colors.input,
+    color: colors.textDark,
+    width: "100%",
+    height: 48,
+    marginBottom: 12,
     borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  } 
+    textAlign: "center",
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+
+  link: {
+    color: colors.textLight,
+    marginTop: 15,
+    fontSize: 15,
+    textDecorationLine: "underline",
+  },
 });
