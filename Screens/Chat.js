@@ -40,6 +40,8 @@ export default function Chat(props) {
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [reactionModalVisible, setReactionModalVisible] = useState(false);
 
+  const [replyMessage, setReplyMessage] = useState(null);
+
   const iddiscussion =
     currentid && secondid
       ? currentid > secondid
@@ -157,6 +159,13 @@ export default function Chat(props) {
         idsender: currentid,
         idreceiver: secondid,
         message: message.trim(),
+        replyTo: replyMessage
+          ? {
+              message: replyMessage.message || "",
+              imageUrl: replyMessage.imageUrl || "",
+              idsender: replyMessage.idsender,
+            }
+          : null,
         time: new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
@@ -165,6 +174,7 @@ export default function Chat(props) {
 
       .then(() => {
         setMessage("");
+        setReplyMessage(null);
 
         ref_all_messages
           .child(iddiscussion)
@@ -288,6 +298,14 @@ export default function Chat(props) {
                     isSender ? styles.senderBubble : styles.receiverBubble,
                   ]}
                 >
+                  {item.replyTo && (
+                    <View style={styles.replyPreview}>
+                      <Text style={styles.replyPreviewTitle}>Réponse</Text>
+                      <Text style={styles.replyPreviewText}>
+                        {item.replyTo.message ? item.replyTo.message : "Image"}
+                      </Text>
+                    </View>
+                  )}
                   {item.imageUrl ? (
                     <TouchableOpacity
                       onPress={() => {
@@ -389,6 +407,35 @@ export default function Chat(props) {
           <Text style={styles.typingText}>en train d'écrire...</Text>
         )}
 
+        {replyMessage && (
+          <View style={styles.replyBox}>
+            <View style={styles.replyIconBox}>
+              <Ionicons name="return-down-forward" size={22} color="white" />
+            </View>
+
+            <View style={styles.replyContent}>
+              <Text style={styles.replyTitle}>Vous répondez à ce message</Text>
+
+              <Text style={styles.replyText}>
+                {replyMessage.message
+                  ? replyMessage.message
+                  : replyMessage.isLocation
+                    ? "Localisation"
+                    : "Image"}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              onPress={() => {
+                setReplyMessage(null);
+              }}
+              style={styles.cancelReplyButton}
+            >
+              <Ionicons name="close" size={20} color="white" />
+            </TouchableOpacity>
+          </View>
+        )}
+
         <View style={styles.inputContainer}>
           <TextInput
             value={message}
@@ -476,6 +523,17 @@ export default function Chat(props) {
                 <Text style={styles.reactionIcon}>😢</Text>
               </TouchableOpacity>
             </View>
+
+            <TouchableOpacity
+              style={styles.replyActionButton}
+              onPress={() => {
+                setReplyMessage(selectedMessage);
+                setReactionModalVisible(false);
+              }}
+            >
+              <Ionicons name="return-down-forward" size={22} color="white" />
+              <Text style={styles.replyActionText}>Répondre</Text>
+            </TouchableOpacity>
           </View>
         </Modal>
         <Modal
@@ -795,5 +853,74 @@ const styles = StyleSheet.create({
   reactionIcon: {
     fontSize: 28,
     marginHorizontal: 8,
+  },
+  replyBox: {
+    width: "96%",
+    backgroundColor: "#FFF8FC",
+    borderLeftWidth: 4,
+    borderLeftColor: "#B135A3",
+    padding: 8,
+    borderRadius: 10,
+    marginBottom: 5,
+  },
+
+  replyTitle: {
+    fontSize: 12,
+    fontWeight: "bold",
+    color: "#B135A3",
+  },
+
+  replyText: {
+    fontSize: 13,
+    color: "#2B1B26",
+    marginTop: 2,
+  },
+
+  cancelReplyButton: {
+    position: "absolute",
+    right: 8,
+    top: 10,
+    backgroundColor: "#B135A3",
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  replyPreview: {
+    backgroundColor: "#ffffff99",
+    borderLeftWidth: 3,
+    borderLeftColor: "#B135A3",
+    padding: 6,
+    borderRadius: 8,
+    marginBottom: 6,
+  },
+
+  replyPreviewTitle: {
+    fontSize: 11,
+    fontWeight: "bold",
+    color: "#B135A3",
+  },
+
+  replyPreviewText: {
+    fontSize: 12,
+    color: "#2B1B26",
+  },
+  replyActionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#B135A3",
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 22,
+    marginTop: 12,
+  },
+
+  replyActionText: {
+    color: "white",
+    fontSize: 15,
+    fontWeight: "bold",
+    marginLeft: 6,
   },
 });
