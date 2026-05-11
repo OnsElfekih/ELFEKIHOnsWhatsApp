@@ -22,7 +22,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { supabase } from "../Config";
 import { Ionicons } from "@expo/vector-icons";
-import { Video } from "expo-av";
+import { Video, Audio } from "expo-av";
 
 const database = firebase.database();
 const ref_all_messages = database.ref("allmessages");
@@ -48,6 +48,8 @@ export default function Chat(props) {
   const [nicknameModalVisible, setNicknameModalVisible] = useState(false);
   const [nickname, setNickname] = useState("");
   const [savedNickname, setSavedNickname] = useState("");
+  const [recording, setRecording] = useState(null);
+  const [playingAudio, setPlayingAudio] = useState(null);
   const iddiscussion =
     currentid && secondid
       ? currentid > secondid
@@ -100,9 +102,15 @@ export default function Chat(props) {
 
     const arraybuffer = await new Response(blob).arrayBuffer();
 
-    const extension = type === "video" ? ".mp4" : ".jpg";
+    const extension =
+      type === "video" ? ".mp4" : type === "audio" ? ".m4a" : ".jpg";
 
-    const contentType = type === "video" ? "video/mp4" : "image/jpeg";
+    const contentType =
+      type === "video"
+        ? "video/mp4"
+        : type === "audio"
+          ? "audio/m4a"
+          : "image/jpeg";
 
     const filenameInSupabase = Date.now() + extension;
 
@@ -270,6 +278,82 @@ export default function Chat(props) {
             minute: "2-digit",
           }),
         });
+    }
+  };
+  const startRecording = async () => {
+    try {
+      const permission = await Audio.requestPermissionsAsync();
+
+      if (!permission.granted) {
+        Alert.alert("Permission requise", "Accès au micro nécessaire.");
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY,
+      );
+
+      setRecording(recording);
+    } catch (error) {
+      Alert.alert("Erreur", "Impossible de démarrer l'enregistrement.");
+    }
+  };
+
+  const stopRecording = async () => {
+    try {
+      if (!recording) return;
+
+      await recording.stopAndUnloadAsync();
+
+      const uri = recording.getURI();
+
+      setRecording(null);
+
+      const link = await uploadFileToSupabase(uri, "audio");
+
+      if (!link || !iddiscussion) return;
+
+      ref_all_messages
+        .child(iddiscussion)
+        .child("chat")
+        .push()
+        .set({
+          idsender: currentid,
+          idreceiver: secondid,
+          audioUrl: link,
+          time: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        });
+    } catch (error) {
+      Alert.alert("Erreur", "Impossible d'envoyer le vocal.");
+    }
+  };
+  const playAudioMessage = async (audioUrl, messageKey) => {
+    try {
+      setPlayingAudio(messageKey);
+
+      const { sound } = await Audio.Sound.createAsync({
+        uri: String(audioUrl),
+      });
+
+      await sound.playAsync();
+
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.didJustFinish) {
+          setPlayingAudio(null);
+        }
+      });
+    } catch (error) {
+      setPlayingAudio(null);
+
+      Alert.alert("Erreur", "Impossible de lire le vocal.");
     }
   };
   const sendMessage = () => {
@@ -470,6 +554,9 @@ export default function Chat(props) {
     if (mediaType === "locations") {
       return data.filter((item) => item.isLocation);
     }
+    if (mediaType === "audios") {
+      return data.filter((item) => item.audioUrl);
+    }
 
     return [];
   };
@@ -561,7 +648,29 @@ export default function Chat(props) {
                           </Text>
                         </View>
                       )}
-                      {item.videoUrl ? (
+                      {item.audioUrl ? (
+                        <TouchableOpacity
+                          style={styles.audioBox}
+                          onPress={() => {
+                            playAudioMessage(item.audioUrl, item.key);
+                          }}
+                        >
+                          <Ionicons
+                            name={
+                              playingAudio === item.key ? "volume-high" : "play"
+                            }
+                            size={22}
+                            color="white"
+                          />
+                          <View style={styles.audioWave}>
+                            <View style={styles.waveBar} />
+                            <View style={[styles.waveBar, { height: 18 }]} />
+                            <View style={[styles.waveBar, { height: 10 }]} />
+                            <View style={[styles.waveBar, { height: 20 }]} />
+                            <View style={[styles.waveBar, { height: 14 }]} />
+                          </View>
+                        </TouchableOpacity>
+                      ) : item.videoUrl ? (
                         <Video
                           source={{ uri: String(item.videoUrl) }}
                           style={{
@@ -756,6 +865,22 @@ export default function Chat(props) {
                 style={{ width: 20, height: 20 }}
               />
             </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                if (recording) {
+                  stopRecording();
+                } else {
+                  startRecording();
+                }
+              }}
+              style={recording ? styles.recordingButton : styles.voiceButton}
+            >
+              <Ionicons
+                name={recording ? "stop" : "mic"}
+                size={22}
+                color="white"
+              />
+            </TouchableOpacity>
             <TouchableOpacity onPress={sendMessage} style={styles.sendButton}>
               <Image
                 source={require("../assets/sendmsg.png")}
@@ -839,6 +964,9 @@ export default function Chat(props) {
                 <TouchableOpacity onPress={() => setMediaType("locations")}>
                   <Text style={styles.mediaTab}>Localisations</Text>
                 </TouchableOpacity>
+                <TouchableOpacity onPress={() => setMediaType("audios")}>
+                  <Text style={styles.mediaTab}>Vocaux</Text>
+                </TouchableOpacity>
               </View>
 
               <FlatList
@@ -862,7 +990,29 @@ export default function Chat(props) {
                         }
                       }}
                     >
-                      {item.videoUrl ? (
+                      {item.audioUrl ? (
+                        <TouchableOpacity
+                          style={styles.audioBox}
+                          onPress={() => {
+                            playAudioMessage(item.audioUrl, item.key);
+                          }}
+                        >
+                          <Ionicons
+                            name={
+                              playingAudio === item.key ? "volume-high" : "play"
+                            }
+                            size={22}
+                            color="white"
+                          />
+                          <View style={styles.audioWave}>
+                            <View style={styles.waveBar} />
+                            <View style={[styles.waveBar, { height: 18 }]} />
+                            <View style={[styles.waveBar, { height: 10 }]} />
+                            <View style={[styles.waveBar, { height: 20 }]} />
+                            <View style={[styles.waveBar, { height: 14 }]} />
+                          </View>
+                        </TouchableOpacity>
+                      ) : item.videoUrl ? (
                         <Video
                           source={{ uri: String(item.videoUrl) }}
                           style={{
@@ -1593,5 +1743,53 @@ const styles = StyleSheet.create({
     color: "#777",
     fontSize: 15,
     fontWeight: "bold",
+  },
+  voiceButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#6D2E5B",
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 4,
+  },
+
+  recordingButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#C62828",
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 4,
+  },
+
+  audioBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#B135A3",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 18,
+    minWidth: 150,
+  },
+
+  audioText: {
+    color: "white",
+    fontWeight: "bold",
+    marginLeft: 8,
+  },
+  audioWave: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginLeft: 10,
+  },
+
+  waveBar: {
+    width: 3,
+    height: 12,
+    backgroundColor: "white",
+    marginHorizontal: 1,
+    borderRadius: 2,
   },
 });
