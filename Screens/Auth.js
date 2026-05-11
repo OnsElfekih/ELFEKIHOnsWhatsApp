@@ -94,7 +94,26 @@ export default function Auth(props) {
           title="Se connecter"
           color="#b135a3"
         />
+        <Text
+          style={styles.forgotPassword}
+          onPress={() => {
+            if (!email) {
+              alert("Entrez votre email.");
+              return;
+            }
 
+            auth
+              .sendPasswordResetEmail(email)
+              .then(() => {
+                alert("Un email de réinitialisation a été envoyé à " + email);
+              })
+              .catch((error) => {
+                alert(error.message);
+              });
+          }}
+        >
+          Mot de passe oublié ?
+        </Text>
         <Text
           style={styles.link}
           onPress={() => {
@@ -184,5 +203,12 @@ const styles = StyleSheet.create({
     flex: 1,
     color: colors.textDark,
     fontSize: 16,
+  },
+  forgotPassword: {
+    color: "#FFF8FC",
+    fontSize: 14,
+    marginTop: 12,
+    marginBottom: 10,
+    textDecorationLine: "underline",
   },
 });
