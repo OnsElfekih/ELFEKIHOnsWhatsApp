@@ -13,6 +13,8 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import firebase from "../../Config";
+import * as ImagePicker from "expo-image-picker";
+import { supabase } from "../../Config";
 
 const auth = firebase.auth();
 const database = firebase.database();
@@ -39,6 +41,10 @@ export default function Groupe(props) {
 
   const [inviteModalVisible, setInviteModalVisible] = useState(false);
   const [availableContacts, setAvailableContacts] = useState([]);
+
+  const [mediaModalVisible, setMediaModalVisible] = useState(false);
+  const [mediaType, setMediaType] = useState("images");
+  const [groupBackground, setGroupBackground] = useState(null);
 
   useEffect(() => {
     if (!userid) return;
@@ -85,6 +91,14 @@ export default function Groupe(props) {
   useEffect(() => {
     if (!selectedGroup) return;
 
+    const ref_background = ref_all_groups
+      .child(selectedGroup.key)
+      .child("background");
+
+    ref_background.on("value", (snapshot) => {
+      setGroupBackground(snapshot.val());
+    });
+
     const ref_messages = ref_all_groups
       .child(selectedGroup.key)
       .child("messages");
@@ -104,6 +118,7 @@ export default function Groupe(props) {
 
     return () => {
       ref_messages.off();
+      ref_background.off();
     };
   }, [selectedGroup]);
 
@@ -357,9 +372,121 @@ export default function Groupe(props) {
     );
     setGroupMembers([...groupMembers, contact]);
   };
+  const getSenderName = () => {
+    return (
+      myAccount?.Nom ||
+      myAccount?.Pseudo ||
+      myAccount?.Email ||
+      auth.currentUser?.email ||
+      "Un membre"
+    );
+  };
+  const uploadFileToSupabase = async (url) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const arraybuffer = await new Response(blob).arrayBuffer();
+
+      const filename = Date.now() + ".jpg";
+
+      const { error } = await supabase.storage
+        .from("images")
+        .upload(filename, arraybuffer, {
+          contentType: "image/jpeg",
+          upsert: true,
+        });
+
+      if (error) {
+        Alert.alert("Erreur upload", error.message);
+        return null;
+      }
+
+      const { data } = supabase.storage.from("images").getPublicUrl(filename);
+
+      return data.publicUrl;
+    } catch (e) {
+      Alert.alert("Erreur", e.message);
+      return null;
+    }
+  };
+  const changeGroupBackground = async () => {
+    if (!selectedGroup) return;
+
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permissionResult.granted) {
+      Alert.alert("Permission requise", "Accès à la galerie nécessaire.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 0.5,
+    });
+
+    if (!result.canceled) {
+      const asset = result.assets[0];
+
+      const link = await uploadFileToSupabase(asset.uri, "image");
+
+      if (!link) return;
+
+      ref_all_groups.child(selectedGroup.key).child("background").set(link);
+
+      ref_all_groups
+        .child(selectedGroup.key)
+        .child("messages")
+        .push()
+        .set({
+          idsender: "system",
+          message: getSenderName() + " a changé le fond de la conversation",
+          time: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        });
+    }
+  };
+
+  const getGroupMedia = () => {
+    if (mediaType === "images") {
+      return groupMessages.filter((item) => item.imageUrl);
+    }
+
+    if (mediaType === "videos") {
+      return groupMessages.filter((item) => item.videoUrl);
+    }
+
+    if (mediaType === "links") {
+      return groupMessages.filter((item) => {
+        const msg = String(item.message || "");
+        return msg.includes("http://") || msg.includes("https://");
+      });
+    }
+
+    if (mediaType === "pinned") {
+      return groupMessages.filter((item) => item.pinned);
+    }
+
+    if (mediaType === "locations") {
+      return groupMessages.filter((item) => item.isLocation);
+    }
+
+    if (mediaType === "audios") {
+      return groupMessages.filter((item) => item.audioUrl);
+    }
+
+    return [];
+  };
   return (
     <ImageBackground
-      source={require("../../assets/backgroundimg1.jpg")}
+      source={
+        groupBackground
+          ? { uri: groupBackground }
+          : require("../../assets/backgroundimg1.jpg")
+      }
       style={styles.container}
     >
       {!selectedGroup ? (
@@ -432,6 +559,25 @@ export default function Groupe(props) {
                 <Ionicons name="trash" size={20} color="white" />
               </TouchableOpacity>
             )}
+          </View>
+          <View style={styles.groupOptionsBox}>
+            <TouchableOpacity
+              style={styles.mediaButton}
+              onPress={() => {
+                setMediaModalVisible(true);
+              }}
+            >
+              <Ionicons name="folder-open" size={20} color="white" />
+              <Text style={styles.mediaButtonText}>Médias partagés</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.mediaButton}
+              onPress={changeGroupBackground}
+            >
+              <Ionicons name="image" size={20} color="white" />
+              <Text style={styles.mediaButtonText}>Changer le fond</Text>
+            </TouchableOpacity>
           </View>
 
           <FlatList
@@ -626,6 +772,68 @@ export default function Groupe(props) {
             <Pressable
               style={styles.cancelButton}
               onPress={() => setInviteModalVisible(false)}
+            >
+              <Text style={styles.cancelText}>Fermer</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+      <Modal visible={mediaModalVisible} transparent animationType="fade">
+        <View style={styles.modalContainer}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Médias partagés</Text>
+
+            <View style={styles.mediaTabs}>
+              <TouchableOpacity onPress={() => setMediaType("images")}>
+                <Text style={styles.mediaTab}>Images</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => setMediaType("videos")}>
+                <Text style={styles.mediaTab}>Vidéos</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => setMediaType("links")}>
+                <Text style={styles.mediaTab}>Liens</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => setMediaType("pinned")}>
+                <Text style={styles.mediaTab}>Épinglés</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => setMediaType("locations")}>
+                <Text style={styles.mediaTab}>Localisations</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => setMediaType("audios")}>
+                <Text style={styles.mediaTab}>Vocaux</Text>
+              </TouchableOpacity>
+            </View>
+
+            <FlatList
+              data={getGroupMedia()}
+              keyExtractor={(item, index) => index.toString()}
+              renderItem={({ item }) => (
+                <TouchableOpacity style={styles.mediaItem}>
+                  <Text style={styles.mediaText}>
+                    {item.imageUrl
+                      ? "Image partagée"
+                      : item.videoUrl
+                        ? "Vidéo partagée"
+                        : item.audioUrl
+                          ? "Message vocal"
+                          : item.isLocation
+                            ? "Localisation partagée"
+                            : item.pinned
+                              ? "Message épinglé: " + (item.message || "")
+                              : item.message}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            />
+
+            <Pressable
+              style={styles.cancelButton}
+              onPress={() => setMediaModalVisible(false)}
             >
               <Text style={styles.cancelText}>Fermer</Text>
             </Pressable>
@@ -975,5 +1183,90 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "bold",
     marginBottom: 4,
+  },
+  mediaModalContainer: {
+    flex: 1,
+    backgroundColor: "#0005",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  mediaBox: {
+    width: "92%",
+    height: "78%",
+    backgroundColor: "#FFF8FC",
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 2,
+    borderColor: "#B135A3",
+  },
+
+  closeMediaButton: {
+    position: "absolute",
+    right: 12,
+    top: 10,
+    zIndex: 10,
+  },
+
+  mediaTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#2B1B26",
+    textAlign: "center",
+    marginBottom: 12,
+  },
+
+  mediaTabs: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+
+  mediaTab: {
+    backgroundColor: "#B135A3",
+    color: "white",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    margin: 3,
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+
+  mediaItem: {
+    backgroundColor: "white",
+    padding: 10,
+    borderRadius: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "#B135A3",
+  },
+
+  mediaText: {
+    color: "#2B1B26",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  groupOptionsBox: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+
+  mediaButton: {
+    flexDirection: "row",
+    backgroundColor: "#B135A3",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    alignItems: "center",
+    marginBottom: 8,
+  },
+
+  mediaButtonText: {
+    color: "white",
+    fontWeight: "bold",
+    marginLeft: 6,
   },
 });
