@@ -10,6 +10,8 @@ import {
   TouchableOpacity,
   Alert,
   View,
+  Modal,
+  FlatList,
 } from "react-native";
 
 import firebase from "../../Config";
@@ -28,6 +30,8 @@ export default function MyAccount(props) {
   const [Email, setEmail] = useState("");
   const [Numero, setNumero] = useState("");
   const [UrlImage, setUrlImage] = useState("");
+  const [photoModalVisible, setPhotoModalVisible] = useState(false);
+  const [imageHistory, setImageHistory] = useState([]);
 
   useEffect(() => {
     ref_my_account.on("value", (snapshot) => {
@@ -38,6 +42,7 @@ export default function MyAccount(props) {
         setNom(data.Nom || "");
         setNumero(data.Numero || "");
         setUrlImage(data.UrlImage || "");
+        setImageHistory(data.ImagesHistory || []);
       }
 
       if (auth.currentUser) {
@@ -49,7 +54,27 @@ export default function MyAccount(props) {
       ref_my_account.off();
     };
   }, []);
+  const savePhotoDirectly = async (imageUri) => {
+    let link = imageUri;
 
+    if (imageUri && imageUri.startsWith("file")) {
+      link = await uploadImageToSupabase(imageUri);
+    }
+
+    const newHistory = imageHistory.includes(link)
+      ? imageHistory
+      : [...imageHistory, link];
+
+    ref_my_account.update({
+      UrlImage: link,
+      ImagesHistory: newHistory,
+    });
+
+    setUrlImage(link);
+    setImageHistory(newHistory);
+
+    Alert.alert("Succès", "Photo sauvegardée");
+  };
   const pickImage = async () => {
     const permissionResult =
       await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -70,7 +95,8 @@ export default function MyAccount(props) {
     });
 
     if (!result.canceled) {
-      setUrlImage(result.assets[0].uri);
+      await savePhotoDirectly(result.assets[0].uri);
+      setPhotoModalVisible(false);
     }
   };
 
@@ -136,7 +162,25 @@ export default function MyAccount(props) {
 
     return data.publicUrl;
   };
+  const takePhoto = async () => {
+    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
 
+    if (!permissionResult.granted) {
+      Alert.alert("Permission requise", "Accès à la caméra nécessaire.");
+      return;
+    }
+
+    let result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 0.5,
+    });
+
+    if (!result.canceled) {
+      await savePhotoDirectly(result.assets[0].uri);
+      setPhotoModalVisible(false);
+    }
+  };
   return (
     <ImageBackground
       source={require("../../assets/backgroundimg1.jpg")}
@@ -147,7 +191,11 @@ export default function MyAccount(props) {
       <View style={styles.card}>
         <Text style={styles.title}>Mon compte</Text>
 
-        <TouchableOpacity onPress={pickImage}>
+        <TouchableOpacity
+          onPress={() => {
+            setPhotoModalVisible(true);
+          }}
+        >
           <Image
             source={
               UrlImage ? { uri: UrlImage } : require("../../assets/profil.png")
@@ -215,6 +263,9 @@ export default function MyAccount(props) {
               Email: auth.currentUser.email,
               Numero,
               UrlImage: link,
+              ImagesHistory: imageHistory.includes(link)
+                ? imageHistory
+                : [...imageHistory, link],
             });
 
             Alert.alert("Succès", "Compte modifié avec succès", [
@@ -245,6 +296,52 @@ export default function MyAccount(props) {
           <Text style={styles.buttonText}>Supprimer le compte</Text>
         </TouchableOpacity>
       </View>
+      <Modal visible={photoModalVisible} transparent animationType="fade">
+        <View style={styles.modalContainer}>
+          <View style={styles.photoBox}>
+            <Text style={styles.photoTitle}>Changer la photo</Text>
+
+            <TouchableOpacity style={styles.photoAction} onPress={pickImage}>
+              <Text style={styles.photoActionText}>
+                Choisir depuis la galerie
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.photoAction} onPress={takePhoto}>
+              <Text style={styles.photoActionText}>
+                Prendre une nouvelle photo
+              </Text>
+            </TouchableOpacity>
+
+            <Text style={styles.historyTitle}>Historique des photos</Text>
+
+            <FlatList
+              data={imageHistory}
+              horizontal
+              keyExtractor={(item, index) => index.toString()}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  onPress={async () => {
+                    await savePhotoDirectly(item);
+                    setPhotoModalVisible(false);
+                  }}
+                >
+                  <Image source={{ uri: item }} style={styles.historyImage} />
+                </TouchableOpacity>
+              )}
+            />
+
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => {
+                setPhotoModalVisible(false);
+              }}
+            >
+              <Text style={styles.cancelText}>Annuler</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ImageBackground>
   );
 }
@@ -361,6 +458,71 @@ const styles = StyleSheet.create({
   buttonText: {
     color: colors.textLight,
     fontSize: 19,
+    fontWeight: "bold",
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: "#0007",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  photoBox: {
+    width: "88%",
+    backgroundColor: colors.input,
+    borderRadius: 18,
+    padding: 18,
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: colors.border,
+  },
+
+  photoTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: colors.textDark,
+    marginBottom: 14,
+  },
+
+  photoAction: {
+    backgroundColor: colors.primaryLight,
+    width: "90%",
+    height: 45,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+
+  photoActionText: {
+    color: colors.textLight,
+    fontSize: 15,
+    fontWeight: "bold",
+  },
+
+  historyTitle: {
+    color: colors.textDark,
+    fontSize: 16,
+    fontWeight: "bold",
+    marginVertical: 10,
+  },
+
+  historyImage: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    marginHorizontal: 6,
+    borderWidth: 2,
+    borderColor: colors.border,
+  },
+
+  cancelButton: {
+    marginTop: 14,
+  },
+
+  cancelText: {
+    color: colors.muted,
+    fontSize: 16,
     fontWeight: "bold",
   },
 });
