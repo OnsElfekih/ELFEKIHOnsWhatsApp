@@ -35,6 +35,8 @@ export default function Groupe(props) {
   const [membersModalVisible, setMembersModalVisible] = useState(false);
   const [groupMembers, setGroupMembers] = useState([]);
 
+  const [myAccount, setMyAccount] = useState(null);
+
   useEffect(() => {
     if (!userid) return;
 
@@ -42,8 +44,12 @@ export default function Groupe(props) {
       const d = [];
 
       snapshot.forEach((one_account) => {
-        if (one_account.val().Id !== userid) {
-          d.push(one_account.val());
+        const account = one_account.val();
+
+        if (account.Id === userid) {
+          setMyAccount(account);
+        } else {
+          d.push(account);
         }
       });
 
@@ -245,7 +251,69 @@ export default function Groupe(props) {
       ],
     );
   };
+  const leaveGroup = () => {
+    if (!selectedGroup) return;
 
+    const leavingName =
+      myAccount?.Nom ||
+      myAccount?.Pseudo ||
+      myAccount?.Email ||
+      auth.currentUser?.email ||
+      "Un membre";
+
+    if (selectedGroup.creator === userid) {
+      Alert.alert(
+        "Confirmation",
+        "Vous êtes admin. Si vous quittez, le groupe sera supprimé complètement.",
+        [
+          { text: "Annuler", style: "cancel" },
+          {
+            text: "Quitter et supprimer",
+            style: "destructive",
+            onPress: () => {
+              ref_all_groups.child(selectedGroup.key).remove();
+
+              setSelectedGroup(null);
+              setGroupMessages([]);
+              setMembersModalVisible(false);
+            },
+          },
+        ],
+      );
+    } else {
+      Alert.alert("Confirmation", "Voulez-vous quitter le groupe ?", [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Quitter",
+          style: "destructive",
+          onPress: () => {
+            ref_all_groups
+              .child(selectedGroup.key)
+              .child("members")
+              .child(userid)
+              .remove();
+
+            ref_all_groups
+              .child(selectedGroup.key)
+              .child("messages")
+              .push()
+              .set({
+                idsender: "system",
+                message: leavingName + " a quitté le groupe",
+                time: new Date().toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }),
+              });
+
+            setSelectedGroup(null);
+            setGroupMessages([]);
+            setMembersModalVisible(false);
+          },
+        },
+      ]);
+    }
+  };
   return (
     <ImageBackground
       source={require("../../assets/backgroundimg1.jpg")}
@@ -306,6 +374,12 @@ export default function Groupe(props) {
               style={styles.membersButton}
             >
               <Ionicons name="people" size={22} color="#B135A3" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={leaveGroup}
+              style={styles.leaveGroupButton}
+            >
+              <Ionicons name="exit" size={20} color="white" />
             </TouchableOpacity>
             {selectedGroup?.creator === userid && (
               <TouchableOpacity
@@ -768,6 +842,15 @@ const styles = StyleSheet.create({
   deleteGroupButton: {
     marginLeft: 8,
     backgroundColor: "#C62828",
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  leaveGroupButton: {
+    marginLeft: 8,
+    backgroundColor: "#6D2E5B",
     width: 38,
     height: 38,
     borderRadius: 19,
