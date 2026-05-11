@@ -46,6 +46,9 @@ export default function Groupe(props) {
   const [mediaType, setMediaType] = useState("images");
   const [groupBackground, setGroupBackground] = useState(null);
 
+  const [groupNameModalVisible, setGroupNameModalVisible] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
+
   useEffect(() => {
     if (!userid) return;
 
@@ -480,6 +483,42 @@ export default function Groupe(props) {
 
     return [];
   };
+  const changeGroupName = () => {
+    if (!selectedGroup || !newGroupName.trim()) return;
+
+    const oldName = selectedGroup.name;
+    const finalName = newGroupName.trim();
+
+    ref_all_groups.child(selectedGroup.key).update({
+      name: finalName,
+    });
+
+    ref_all_groups
+      .child(selectedGroup.key)
+      .child("messages")
+      .push()
+      .set({
+        idsender: "system",
+        message:
+          getSenderName() +
+          " a changé le nom du groupe de " +
+          oldName +
+          " en " +
+          finalName,
+        time: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      });
+
+    setSelectedGroup({
+      ...selectedGroup,
+      name: finalName,
+    });
+
+    setNewGroupName("");
+    setGroupNameModalVisible(false);
+  };
   return (
     <ImageBackground
       source={
@@ -538,7 +577,14 @@ export default function Groupe(props) {
               <Ionicons name="arrow-back" size={26} color="#2B1B26" />
             </TouchableOpacity>
 
-            <Text style={styles.chatTitle}>{selectedGroup.name}</Text>
+            <TouchableOpacity
+              onLongPress={() => {
+                setNewGroupName(selectedGroup.name);
+                setGroupNameModalVisible(true);
+              }}
+            >
+              <Text style={styles.chatTitle}>{selectedGroup.name}</Text>
+            </TouchableOpacity>
             <TouchableOpacity
               onPress={openMembersModal}
               style={styles.membersButton}
@@ -836,6 +882,32 @@ export default function Groupe(props) {
               onPress={() => setMediaModalVisible(false)}
             >
               <Text style={styles.cancelText}>Fermer</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+      <Modal visible={groupNameModalVisible} transparent animationType="fade">
+        <View style={styles.modalContainer}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Modifier le nom du groupe</Text>
+
+            <TextInput
+              value={newGroupName}
+              onChangeText={setNewGroupName}
+              placeholder="Nouveau nom du groupe"
+              placeholderTextColor="#777"
+              style={styles.groupInput}
+            />
+
+            <Pressable style={styles.createButton} onPress={changeGroupName}>
+              <Text style={styles.createText}>Enregistrer</Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.cancelButton}
+              onPress={() => setGroupNameModalVisible(false)}
+            >
+              <Text style={styles.cancelText}>Annuler</Text>
             </Pressable>
           </View>
         </View>
