@@ -1,5 +1,6 @@
 import {
   FlatList,
+  Image,
   ImageBackground,
   Modal,
   Pressable,
@@ -9,12 +10,15 @@ import {
   TouchableOpacity,
   View,
   Alert,
+  Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import firebase from "../../Config";
 import * as ImagePicker from "expo-image-picker";
 import { supabase } from "../../Config";
+import * as Location from "expo-location";
+import { Video, Audio } from "expo-av";
 
 const auth = firebase.auth();
 const database = firebase.database();
@@ -48,6 +52,9 @@ export default function Groupe(props) {
 
   const [groupNameModalVisible, setGroupNameModalVisible] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
+
+  const [recording, setRecording] = useState(null);
+  const [playingAudio, setPlayingAudio] = useState(null);
 
   useEffect(() => {
     if (!userid) return;
@@ -384,18 +391,28 @@ export default function Groupe(props) {
       "Un membre"
     );
   };
-  const uploadFileToSupabase = async (url) => {
+  const uploadFileToSupabase = async (url, type = "image") => {
     try {
       const response = await fetch(url);
       const blob = await response.blob();
       const arraybuffer = await new Response(blob).arrayBuffer();
 
-      const filename = Date.now() + ".jpg";
+      const extension =
+        type === "video" ? ".mp4" : type === "audio" ? ".m4a" : ".jpg";
+
+      const contentType =
+        type === "video"
+          ? "video/mp4"
+          : type === "audio"
+            ? "audio/m4a"
+            : "image/jpeg";
+
+      const filename = Date.now() + extension;
 
       const { error } = await supabase.storage
         .from("images")
         .upload(filename, arraybuffer, {
-          contentType: "image/jpeg",
+          contentType: contentType,
           upsert: true,
         });
 
@@ -410,6 +427,166 @@ export default function Groupe(props) {
     } catch (e) {
       Alert.alert("Erreur", e.message);
       return null;
+    }
+  };
+  const sendGroupMedia = (data) => {
+    if (!selectedGroup) return;
+
+    ref_all_groups
+      .child(selectedGroup.key)
+      .child("messages")
+      .push()
+      .set({
+        idsender: userid,
+        ...data,
+        time: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      });
+  };
+
+  const pickImage = async () => {
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permissionResult.granted) return;
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 0.5,
+    });
+
+    if (!result.canceled) {
+      const asset = result.assets[0];
+      const link = await uploadFileToSupabase(asset.uri, "image");
+
+      if (link) {
+        sendGroupMedia({ imageUrl: link });
+      }
+    }
+  };
+
+  const pickVideo = async () => {
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permissionResult.granted) return;
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+      allowsEditing: false,
+      quality: 0.5,
+    });
+
+    if (!result.canceled) {
+      const asset = result.assets[0];
+      const link = await uploadFileToSupabase(asset.uri, "video");
+
+      if (link) {
+        sendGroupMedia({ videoUrl: link });
+      }
+    }
+  };
+  const openCamera = async () => {
+    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+
+    if (!permissionResult.granted) return;
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 0.5,
+    });
+
+    if (!result.canceled) {
+      const link = await uploadFileToSupabase(result.assets[0].uri, "image");
+      if (link) sendGroupMedia({ imageUrl: link });
+    }
+  };
+
+  const openVideoCamera = async () => {
+    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+
+    if (!permissionResult.granted) return;
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+      allowsEditing: false,
+      quality: 0.5,
+      videoMaxDuration: 30,
+    });
+
+    if (!result.canceled) {
+      const link = await uploadFileToSupabase(result.assets[0].uri, "video");
+      if (link) sendGroupMedia({ videoUrl: link });
+    }
+  };
+
+  const sendLocation = async () => {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+
+    if (status !== "granted") return;
+
+    const loc = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.High,
+    });
+
+    sendGroupMedia({
+      latitude: loc.coords.latitude,
+      longitude: loc.coords.longitude,
+      isLocation: true,
+    });
+  };
+
+  const startRecording = async () => {
+    const permission = await Audio.requestPermissionsAsync();
+
+    if (!permission.granted) return;
+
+    await Audio.setAudioModeAsync({
+      allowsRecordingIOS: true,
+      playsInSilentModeIOS: true,
+    });
+
+    const { recording } = await Audio.Recording.createAsync(
+      Audio.RecordingOptionsPresets.HIGH_QUALITY,
+    );
+
+    setRecording(recording);
+  };
+
+  const stopRecording = async () => {
+    if (!recording) return;
+
+    await recording.stopAndUnloadAsync();
+
+    const uri = recording.getURI();
+    setRecording(null);
+
+    const link = await uploadFileToSupabase(uri, "audio");
+
+    if (link) sendGroupMedia({ audioUrl: link });
+  };
+
+  const playAudioMessage = async (audioUrl, messageKey) => {
+    try {
+      setPlayingAudio(messageKey);
+
+      const { sound } = await Audio.Sound.createAsync({
+        uri: String(audioUrl),
+      });
+
+      await sound.playAsync();
+
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.didJustFinish) {
+          setPlayingAudio(null);
+        }
+      });
+    } catch (error) {
+      setPlayingAudio(null);
     }
   };
   const changeGroupBackground = async () => {
@@ -655,15 +832,57 @@ export default function Groupe(props) {
                           "Membre"}
                       </Text>
                     )}
-                    <Text
-                      style={
-                        item.idsender === "system"
-                          ? styles.systemText
-                          : styles.messageText
-                      }
-                    >
-                      {String(item.message || "")}
-                    </Text>
+                    {item.audioUrl ? (
+                      <TouchableOpacity
+                        style={styles.audioBox}
+                        onPress={() =>
+                          playAudioMessage(item.audioUrl, item.key)
+                        }
+                      >
+                        <Ionicons
+                          name={
+                            playingAudio === item.key ? "volume-high" : "play"
+                          }
+                          size={22}
+                          color="white"
+                        />
+                        <Text style={styles.audioText}>Message vocal</Text>
+                      </TouchableOpacity>
+                    ) : item.videoUrl ? (
+                      <Video
+                        source={{ uri: String(item.videoUrl) }}
+                        style={styles.video}
+                        useNativeControls
+                        resizeMode="contain"
+                      />
+                    ) : item.imageUrl ? (
+                      <Image
+                        source={{ uri: String(item.imageUrl) }}
+                        style={styles.messageImage}
+                      />
+                    ) : item.isLocation ? (
+                      <TouchableOpacity
+                        onPress={() => {
+                          Linking.openURL(
+                            `https://www.google.com/maps?q=${item.latitude},${item.longitude}`,
+                          );
+                        }}
+                      >
+                        <Text style={styles.locationText}>
+                          📍 Localisation partagée
+                        </Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <Text
+                        style={
+                          item.idsender === "system"
+                            ? styles.systemText
+                            : styles.messageText
+                        }
+                      >
+                        {String(item.message || "")}
+                      </Text>
+                    )}
 
                     <Text style={styles.timeText}>
                       {String(item.time || "")}
@@ -683,12 +902,54 @@ export default function Groupe(props) {
               style={styles.input}
             />
 
-            <TouchableOpacity
-              style={styles.sendButton}
-              onPress={sendGroupMessage}
-            >
-              <Ionicons name="send" size={20} color="white" />
-            </TouchableOpacity>
+            <View style={styles.buttonsContainer}>
+              <TouchableOpacity
+                onPress={openCamera}
+                onLongPress={openVideoCamera}
+                style={styles.iconButton}
+              >
+                <Ionicons name="camera" size={22} color="#B135A3" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={pickImage}
+                onLongPress={pickVideo}
+                style={styles.iconButton}
+              >
+                <Ionicons name="image" size={22} color="#B135A3" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={sendLocation}
+                style={styles.iconButton}
+              >
+                <Ionicons name="location" size={22} color="#B135A3" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  if (recording) {
+                    stopRecording();
+                  } else {
+                    startRecording();
+                  }
+                }}
+                style={recording ? styles.recordingButton : styles.voiceButton}
+              >
+                <Ionicons
+                  name={recording ? "stop" : "mic"}
+                  size={22}
+                  color="white"
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.sendButton}
+                onPress={sendGroupMessage}
+              >
+                <Ionicons name="send" size={20} color="white" />
+              </TouchableOpacity>
+            </View>
           </View>
         </>
       )}
@@ -1340,5 +1601,73 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "bold",
     marginLeft: 6,
+  },
+  iconButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#FFF8FC",
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 4,
+  },
+
+  voiceButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#6D2E5B",
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 4,
+  },
+
+  recordingButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#C62828",
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 4,
+  },
+
+  messageImage: {
+    width: 150,
+    height: 150,
+    borderRadius: 10,
+    marginBottom: 4,
+  },
+
+  video: {
+    width: 220,
+    height: 220,
+    borderRadius: 10,
+    marginBottom: 4,
+  },
+
+  audioBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#B135A3",
+    padding: 10,
+    borderRadius: 18,
+  },
+
+  audioText: {
+    color: "white",
+    fontWeight: "bold",
+    marginLeft: 8,
+  },
+
+  locationText: {
+    color: "#0066cc",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  buttonsContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginLeft: 5,
   },
 });

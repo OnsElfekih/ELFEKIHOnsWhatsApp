@@ -816,47 +816,14 @@ export default function Chat(props) {
                       ) : item.isLocation ? (
                         <TouchableOpacity
                           onPress={() => {
-                            if (item.latitude && item.longitude) {
-                              const mapsUrl = `https://www.google.com/maps?q=${item.latitude},${item.longitude}`;
-                              Linking.openURL(mapsUrl);
-                            }
-                          }}
-                          onLongPress={() => {
-                            setSelectedMessage(item);
-                            setReactionModalVisible(true);
+                            Linking.openURL(
+                              `https://www.google.com/maps?q=${item.latitude},${item.longitude}`,
+                            );
                           }}
                         >
-                          <Image
-                            source={require("../assets/localisation.jpg")}
-                            style={{
-                              width: 200,
-                              height: 200,
-                              borderRadius: 10,
-                              marginBottom: 4,
-                            }}
-                            resizeMode="cover"
-                          />
-
-                          <View style={{ alignItems: "center", marginTop: 8 }}>
-                            <Text style={styles.locationText}>
-                              Lat: {item.latitude?.toFixed(4)}
-                            </Text>
-
-                            <Text style={styles.locationText}>
-                              Lon: {item.longitude?.toFixed(4)}
-                            </Text>
-
-                            <Text
-                              style={{
-                                fontSize: 12,
-                                color: "#0066cc",
-                                marginTop: 4,
-                                fontWeight: "bold",
-                              }}
-                            >
-                              Tap to view on Maps
-                            </Text>
-                          </View>
+                          <Text style={styles.locationText}>
+                            📍 Localisation partagée
+                          </Text>
                         </TouchableOpacity>
                       ) : (
                         <Text style={styles.messageText}>
@@ -960,19 +927,13 @@ export default function Chat(props) {
               onLongPress={pickVideo}
               style={styles.iconButton}
             >
-              <Image
-                source={require("../assets/appareilPhoto.jpg")}
-                style={{ width: 20, height: 20 }}
-              />
+              <Ionicons name="image" size={22} color="#B135A3" />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={sendLocation}
               style={styles.locationButton}
             >
-              <Image
-                source={require("../assets/localisation.jpg")}
-                style={{ width: 20, height: 20 }}
-              />
+              <Ionicons name="location" size={22} color="#B135A3" />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => {
@@ -991,10 +952,7 @@ export default function Chat(props) {
               />
             </TouchableOpacity>
             <TouchableOpacity onPress={sendMessage} style={styles.sendButton}>
-              <Image
-                source={require("../assets/sendmsg.png")}
-                style={{ width: 20, height: 20, tintColor: "#fff" }}
-              />
+              <Ionicons name="send" size={20} color="white" />
             </TouchableOpacity>
           </View>
         </View>
