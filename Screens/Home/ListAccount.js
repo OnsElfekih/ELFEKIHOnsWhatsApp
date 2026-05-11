@@ -17,11 +17,13 @@ import firebase from "../../Config";
 
 const database = firebase.database();
 const ref_all_accounts = database.ref("allaccounts");
+const ref_all_messages = database.ref("allmessages");
 
 export default function ListAccount(props) {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedUser, setSelectedUser] = useState();
   const [data, setdata] = useState([]);
+
 
   const userid = props.route.params.userid;
 
@@ -31,7 +33,26 @@ export default function ListAccount(props) {
 
       snapshot.forEach((one_account) => {
         if (one_account.val().Id !== userid) {
-          d.push(one_account.val());
+          const otherUser = one_account.val();
+
+          const iddiscussion =
+            userid > otherUser.Id
+              ? userid + otherUser.Id
+              : otherUser.Id + userid;
+
+          ref_all_messages
+            .child(iddiscussion)
+            .child("nicknames")
+            .child(otherUser.Id)
+            .once("value")
+            .then((nicknameSnapshot) => {
+              d.push({
+                ...otherUser,
+                Nickname: nicknameSnapshot.val() || "",
+              });
+
+              setdata([...d]);
+            });
         }
       });
 
@@ -73,8 +94,10 @@ export default function ListAccount(props) {
               </TouchableOpacity>
 
               <View style={styles.infoBox}>
-                <Text style={styles.name}>{item.Nom}</Text>
-                <Text style={styles.pseudo}>@{item.Pseudo}</Text>
+                <Text style={styles.name}>
+                  {item.Nickname ? item.Nickname : item.Nom}
+                </Text>
+                <Text style={styles.pseudo}>{item.Pseudo}</Text>
                 <Text style={styles.email}>{item.Email}</Text>
                 <Text style={styles.numero}>{item.Numero}</Text>
               </View>
@@ -142,9 +165,12 @@ export default function ListAccount(props) {
               }
               style={styles.modalImage}
             />
-
-            <Text style={styles.modalName}>{selectedUser?.Nom}</Text>
-            <Text style={styles.modalText}>@{selectedUser?.Pseudo}</Text>
+            <Text style={styles.modalPseudo}>{selectedUser?.Pseudo}</Text>
+            <Text style={styles.modalText}>
+              {selectedUser?.Nickname
+                ? selectedUser?.Nickname
+                : selectedUser?.Nom}
+            </Text>
             <Text style={styles.modalText}>{selectedUser?.Numero}</Text>
             <Text style={styles.modalText}>{selectedUser?.Email}</Text>
 
@@ -291,7 +317,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
 
-  modalName: {
+  modalPseudo: {
     fontSize: 24,
     fontWeight: "bold",
     color: "#2B1B26",
