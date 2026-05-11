@@ -19,6 +19,8 @@ import * as ImagePicker from "expo-image-picker";
 import { supabase } from "../../Config";
 import * as Location from "expo-location";
 import { Video, Audio } from "expo-av";
+import * as MediaLibrary from "expo-media-library";
+import * as FileSystem from "expo-file-system";
 
 const auth = firebase.auth();
 const database = firebase.database();
@@ -55,6 +57,12 @@ export default function Groupe(props) {
 
   const [recording, setRecording] = useState(null);
   const [playingAudio, setPlayingAudio] = useState(null);
+
+  const [visibleImage, setVisibleImage] = useState(null);
+  const [isImageModalVisible, setIsImageModalVisible] = useState(false);
+
+  const [visibleVideo, setVisibleVideo] = useState(null);
+  const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
 
   useEffect(() => {
     if (!userid) return;
@@ -696,6 +704,27 @@ export default function Groupe(props) {
     setNewGroupName("");
     setGroupNameModalVisible(false);
   };
+  const downloadImage = async (url) => {
+    try {
+      const permission = await MediaLibrary.requestPermissionsAsync();
+
+      if (!permission.granted) {
+        Alert.alert("Permission refusée", "Autorisez l'accès à la galerie.");
+        return;
+      }
+
+      const filename = Date.now() + ".jpg";
+      const fileUri = FileSystem.documentDirectory + filename;
+
+      const downloadResult = await FileSystem.downloadAsync(url, fileUri);
+
+      await MediaLibrary.createAssetAsync(downloadResult.uri);
+
+      Alert.alert("Succès", "Image téléchargée dans la galerie");
+    } catch (error) {
+      Alert.alert("Erreur téléchargement", error.message);
+    }
+  };
   return (
     <ImageBackground
       source={
@@ -849,17 +878,31 @@ export default function Groupe(props) {
                         <Text style={styles.audioText}>Message vocal</Text>
                       </TouchableOpacity>
                     ) : item.videoUrl ? (
-                      <Video
-                        source={{ uri: String(item.videoUrl) }}
-                        style={styles.video}
-                        useNativeControls
-                        resizeMode="contain"
-                      />
+                      <TouchableOpacity
+                        onPress={() => {
+                          setVisibleVideo(String(item.videoUrl));
+                          setIsVideoModalVisible(true);
+                        }}
+                      >
+                        <Video
+                          source={{ uri: String(item.videoUrl) }}
+                          style={styles.video}
+                          useNativeControls
+                          resizeMode="contain"
+                        />
+                      </TouchableOpacity>
                     ) : item.imageUrl ? (
-                      <Image
-                        source={{ uri: String(item.imageUrl) }}
-                        style={styles.messageImage}
-                      />
+                      <TouchableOpacity
+                        onPress={() => {
+                          setVisibleImage(String(item.imageUrl));
+                          setIsImageModalVisible(true);
+                        }}
+                      >
+                        <Image
+                          source={{ uri: String(item.imageUrl) }}
+                          style={styles.messageImage}
+                        />
+                      </TouchableOpacity>
                     ) : item.isLocation ? (
                       <TouchableOpacity
                         onPress={() => {
@@ -1149,17 +1192,31 @@ export default function Groupe(props) {
                       <Text style={styles.audioText}>Message vocal</Text>
                     </TouchableOpacity>
                   ) : item.videoUrl ? (
-                    <Video
-                      source={{ uri: String(item.videoUrl) }}
-                      style={styles.mediaVideo}
-                      useNativeControls
-                      resizeMode="contain"
-                    />
+                    <TouchableOpacity
+                      onPress={() => {
+                        setVisibleVideo(String(item.videoUrl));
+                        setIsVideoModalVisible(true);
+                      }}
+                    >
+                      <Video
+                        source={{ uri: String(item.videoUrl) }}
+                        style={styles.video}
+                        useNativeControls
+                        resizeMode="contain"
+                      />
+                    </TouchableOpacity>
                   ) : item.imageUrl ? (
-                    <Image
-                      source={{ uri: String(item.imageUrl) }}
-                      style={styles.mediaImage}
-                    />
+                    <TouchableOpacity
+                      onPress={() => {
+                        setVisibleImage(String(item.imageUrl));
+                        setIsImageModalVisible(true);
+                      }}
+                    >
+                      <Image
+                        source={{ uri: String(item.imageUrl) }}
+                        style={styles.messageImage}
+                      />
+                    </TouchableOpacity>
                   ) : item.isLocation ? (
                     <Text style={styles.mediaText}>
                       📍 Localisation partagée
@@ -1212,6 +1269,56 @@ export default function Groupe(props) {
           </View>
         </View>
       </Modal>
+      <Modal visible={isImageModalVisible} transparent animationType="fade">
+        <View style={styles.fullScreenContainer}>
+          <TouchableOpacity
+            style={styles.closeImageButton}
+            onPress={() => setIsImageModalVisible(false)}
+          >
+            <Ionicons name="close" size={35} color="white" />
+          </TouchableOpacity>
+
+          <View style={styles.imageBox}>
+            {visibleImage && (
+              <Image
+                source={{ uri: visibleImage }}
+                style={styles.fullScreenImage}
+                resizeMode="contain"
+              />
+            )}
+
+            <TouchableOpacity
+              style={styles.downloadButton}
+              onPress={() => {
+                downloadImage(visibleImage);
+              }}
+            >
+              <Ionicons name="download" size={24} color="white" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+      <Modal visible={isVideoModalVisible} transparent animationType="fade">
+        <View style={styles.fullScreenContainer}>
+          <TouchableOpacity
+            style={styles.closeImageButton}
+            onPress={() => setIsVideoModalVisible(false)}
+          >
+            <Ionicons name="close" size={35} color="white" />
+          </TouchableOpacity>
+
+          <View style={styles.imageBox}>
+            {visibleVideo && (
+              <Video
+                source={{ uri: visibleVideo }}
+                style={styles.fullScreenVideo}
+                useNativeControls
+                resizeMode="contain"
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
     </ImageBackground>
   );
 }
@@ -1220,6 +1327,48 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 35,
+    alignItems: "center",
+  },
+  fullScreenContainer: {
+    flex: 1,
+    backgroundColor: "#000",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  closeImageButton: {
+    position: "absolute",
+    top: 45,
+    right: 20,
+    zIndex: 10,
+  },
+
+  imageBox: {
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  fullScreenImage: {
+    width: 350,
+    height: 500,
+  },
+
+  fullScreenVideo: {
+    width: "100%",
+    height: "70%",
+  },
+
+  downloadButton: {
+    position: "absolute",
+    bottom: 35,
+    right: 25,
+    backgroundColor: "#B135A3",
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: "center",
     alignItems: "center",
   },
 
