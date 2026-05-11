@@ -57,6 +57,9 @@ export default function Chat(props) {
   const [chatBackground, setChatBackground] = useState(null);
   const [backgroundModalVisible, setBackgroundModalVisible] = useState(false);
 
+  const [visibleVideo, setVisibleVideo] = useState(null);
+  const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
+
   const iddiscussion =
     currentid && secondid
       ? currentid > secondid
@@ -475,7 +478,7 @@ export default function Chat(props) {
       const permission = await MediaLibrary.requestPermissionsAsync();
 
       if (!permission.granted) {
-        Alert.alert("Permission refusée", "Autorisez l'accès aux fichiers.");
+        Alert.alert("Permission refusée", "Autorisez l'accès à la galerie.");
         return;
       }
 
@@ -484,9 +487,14 @@ export default function Chat(props) {
 
       const downloadResult = await FileSystem.downloadAsync(url, fileUri);
 
-      await MediaLibrary.saveToLibraryAsync(downloadResult.uri);
+      await MediaLibrary.createAssetAsync(downloadResult.uri);
 
-      Alert.alert("Succès", "Image téléchargée dans la galerie");
+      Alert.alert(
+        "Succès",
+        type === "video"
+          ? "Vidéo téléchargée dans la galerie"
+          : "Image téléchargée dans la galerie",
+      );
     } catch (error) {
       Alert.alert("Erreur téléchargement", error.message);
     }
@@ -780,17 +788,24 @@ export default function Chat(props) {
                           </View>
                         </TouchableOpacity>
                       ) : item.videoUrl ? (
-                        <Video
-                          source={{ uri: String(item.videoUrl) }}
-                          style={{
-                            width: 220,
-                            height: 220,
-                            borderRadius: 10,
-                            marginBottom: 4,
+                        <TouchableOpacity
+                          onPress={() => {
+                            setVisibleVideo(String(item.videoUrl));
+                            setIsVideoModalVisible(true);
                           }}
-                          useNativeControls
-                          resizeMode="contain"
-                        />
+                        >
+                          <Video
+                            source={{ uri: String(item.videoUrl) }}
+                            style={{
+                              width: 220,
+                              height: 220,
+                              borderRadius: 10,
+                              marginBottom: 4,
+                            }}
+                            useNativeControls
+                            resizeMode="contain"
+                          />
+                        </TouchableOpacity>
                       ) : item.imageUrl ? (
                         <TouchableOpacity
                           onPress={() => {
@@ -1128,17 +1143,24 @@ export default function Chat(props) {
                           </View>
                         </TouchableOpacity>
                       ) : item.videoUrl ? (
-                        <Video
-                          source={{ uri: String(item.videoUrl) }}
-                          style={{
-                            width: 220,
-                            height: 220,
-                            borderRadius: 10,
-                            marginBottom: 4,
+                        <TouchableOpacity
+                          onPress={() => {
+                            setVisibleVideo(String(item.videoUrl));
+                            setIsVideoModalVisible(true);
                           }}
-                          useNativeControls
-                          resizeMode="contain"
-                        />
+                        >
+                          <Video
+                            source={{ uri: String(item.videoUrl) }}
+                            style={{
+                              width: 220,
+                              height: 220,
+                              borderRadius: 10,
+                              marginBottom: 4,
+                            }}
+                            useNativeControls
+                            resizeMode="contain"
+                          />
+                        </TouchableOpacity>
                       ) : item.imageUrl ? (
                         <Image
                           source={{ uri: String(item.imageUrl) }}
@@ -1281,6 +1303,33 @@ export default function Chat(props) {
               >
                 <Ionicons name="download" size={24} color="white" />
               </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+        <Modal
+          visible={isVideoModalVisible}
+          transparent={true}
+          animationType="fade"
+        >
+          <View style={styles.fullScreenContainer}>
+            <TouchableOpacity
+              style={styles.closeImageButton}
+              onPress={() => {
+                setIsVideoModalVisible(false);
+              }}
+            >
+              <Ionicons name="close" size={35} color="white" />
+            </TouchableOpacity>
+
+            <View style={styles.imageBox}>
+              {visibleVideo && (
+                <Video
+                  source={{ uri: visibleVideo }}
+                  style={styles.fullScreenVideo}
+                  useNativeControls
+                  resizeMode="contain"
+                />
+              )}
             </View>
           </View>
         </Modal>
@@ -1545,9 +1594,9 @@ const styles = StyleSheet.create({
   },
 
   locationText: {
-    fontSize: 12,
-    color: colors.textDark,
-    marginVertical: 2,
+    color: "#0066cc",
+    fontSize: 14,
+    fontWeight: "bold",
   },
 
   closeImageButton: {
@@ -1937,5 +1986,9 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 15,
     fontWeight: "bold",
+  },
+  fullScreenVideo: {
+    width: "100%",
+    height: "70%",
   },
 });
