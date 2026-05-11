@@ -22,6 +22,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { supabase } from "../Config";
 import { Ionicons } from "@expo/vector-icons";
+import { Video } from "expo-av";
 
 const database = firebase.database();
 const ref_all_messages = database.ref("allmessages");
@@ -92,17 +93,23 @@ export default function Chat(props) {
     };
   }, [iddiscussion, secondid]);
 
-  const uploadImageToSupabase = async (url) => {
+  const uploadFileToSupabase = async (url, type = "image") => {
     const response = await fetch(url);
+
     const blob = await response.blob();
+
     const arraybuffer = await new Response(blob).arrayBuffer();
 
-    const filenameInSupabase = Date.now() + ".jpg";
+    const extension = type === "video" ? ".mp4" : ".jpg";
+
+    const contentType = type === "video" ? "video/mp4" : "image/jpeg";
+
+    const filenameInSupabase = Date.now() + extension;
 
     const { error } = await supabase.storage
       .from("images")
       .upload(filenameInSupabase, arraybuffer, {
-        contentType: "image/jpeg",
+        contentType: contentType,
         upsert: true,
       });
 
@@ -128,14 +135,20 @@ export default function Chat(props) {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsEditing: true,
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      allowsEditing: false,
       quality: 0.5,
     });
 
     if (!result.canceled) {
-      const localUri = result.assets[0].uri;
-      const link = await uploadImageToSupabase(localUri);
+      const asset = result.assets[0];
+
+      const localUri = asset.uri;
+
+      const link = await uploadFileToSupabase(
+        localUri,
+        asset.type === "video" ? "video" : "image",
+      );
 
       if (!link || !iddiscussion) return;
 
@@ -143,7 +156,8 @@ export default function Chat(props) {
       ref_chat.push().set({
         idsender: currentid,
         idreceiver: secondid,
-        imageUrl: link,
+
+        ...(asset.type === "video" ? { videoUrl: link } : { imageUrl: link }),
         time: new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
@@ -151,7 +165,113 @@ export default function Chat(props) {
       });
     }
   };
+  const openCamera = async () => {
+    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
 
+    if (!permissionResult.granted) {
+      Alert.alert("Permission requise", "Accès à la caméra nécessaire.");
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 0.5,
+    });
+
+    if (!result.canceled) {
+      const asset = result.assets[0];
+      const link = await uploadFileToSupabase(asset.uri, "image");
+
+      if (!link || !iddiscussion) return;
+
+      ref_all_messages
+        .child(iddiscussion)
+        .child("chat")
+        .push()
+        .set({
+          idsender: currentid,
+          idreceiver: secondid,
+          imageUrl: link,
+          time: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        });
+    }
+  };
+  const openVideoCamera = async () => {
+    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+
+    if (!permissionResult.granted) {
+      Alert.alert("Permission requise", "Accès à la caméra nécessaire.");
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+      allowsEditing: false,
+      quality: 0.5,
+      videoMaxDuration: 30,
+    });
+
+    if (!result.canceled) {
+      const asset = result.assets[0];
+      const link = await uploadFileToSupabase(asset.uri, "video");
+
+      if (!link || !iddiscussion) return;
+
+      ref_all_messages
+        .child(iddiscussion)
+        .child("chat")
+        .push()
+        .set({
+          idsender: currentid,
+          idreceiver: secondid,
+          videoUrl: link,
+          time: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        });
+    }
+  };
+  const pickVideo = async () => {
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permissionResult.granted) {
+      Alert.alert("Permission requise", "Accès à la galerie nécessaire.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+      allowsEditing: false,
+      quality: 0.5,
+    });
+
+    if (!result.canceled) {
+      const asset = result.assets[0];
+      const link = await uploadFileToSupabase(asset.uri, "video");
+
+      if (!link || !iddiscussion) return;
+
+      ref_all_messages
+        .child(iddiscussion)
+        .child("chat")
+        .push()
+        .set({
+          idsender: currentid,
+          idreceiver: secondid,
+          videoUrl: link,
+          time: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        });
+    }
+  };
   const sendMessage = () => {
     if (!iddiscussion) {
       Alert.alert("Erreur", "IDs manquants");
@@ -441,7 +561,19 @@ export default function Chat(props) {
                           </Text>
                         </View>
                       )}
-                      {item.imageUrl ? (
+                      {item.videoUrl ? (
+                        <Video
+                          source={{ uri: String(item.videoUrl) }}
+                          style={{
+                            width: 220,
+                            height: 220,
+                            borderRadius: 10,
+                            marginBottom: 4,
+                          }}
+                          useNativeControls
+                          resizeMode="contain"
+                        />
+                      ) : item.imageUrl ? (
                         <TouchableOpacity
                           onPress={() => {
                             setVisibleImage(String(item.imageUrl));
@@ -597,13 +729,24 @@ export default function Chat(props) {
           />
 
           <View style={styles.buttonsContainer}>
-            <TouchableOpacity onPress={pickImage} style={styles.iconButton}>
+            <TouchableOpacity
+              onPress={openCamera}
+              onLongPress={openVideoCamera}
+              style={styles.iconButton}
+            >
+              <Ionicons name="camera" size={22} color="#B135A3" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={pickImage}
+              onLongPress={pickVideo}
+              style={styles.iconButton}
+            >
               <Image
                 source={require("../assets/appareilPhoto.jpg")}
                 style={{ width: 20, height: 20 }}
               />
             </TouchableOpacity>
-
             <TouchableOpacity
               onPress={sendLocation}
               style={styles.locationButton}
@@ -719,7 +862,19 @@ export default function Chat(props) {
                         }
                       }}
                     >
-                      {item.imageUrl ? (
+                      {item.videoUrl ? (
+                        <Video
+                          source={{ uri: String(item.videoUrl) }}
+                          style={{
+                            width: 220,
+                            height: 220,
+                            borderRadius: 10,
+                            marginBottom: 4,
+                          }}
+                          useNativeControls
+                          resizeMode="contain"
+                        />
+                      ) : item.imageUrl ? (
                         <Image
                           source={{ uri: String(item.imageUrl) }}
                           style={styles.mediaImage}
