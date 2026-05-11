@@ -1,13 +1,574 @@
-import { StyleSheet, Text, View } from "react-native";
-import React from "react";
+import {
+  FlatList,
+  ImageBackground,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  Alert,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useEffect, useState } from "react";
+import firebase from "../../Config";
 
-export default function Groupe() {
+const auth = firebase.auth();
+const database = firebase.database();
+const ref_all_accounts = database.ref("allaccounts");
+const ref_all_groups = database.ref("allgroups");
+
+export default function Groupe(props) {
+  const userid = props.route?.params?.userid || auth.currentUser?.uid;
+  const [groups, setGroups] = useState([]);
+  const [contacts, setContacts] = useState([]);
+  const [selectedContacts, setSelectedContacts] = useState([]);
+
+  const [groupName, setGroupName] = useState("");
+  const [groupModalVisible, setGroupModalVisible] = useState(false);
+
+  const [selectedGroup, setSelectedGroup] = useState(null);
+  const [groupMessages, setGroupMessages] = useState([]);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    if (!userid) return;
+
+    ref_all_accounts.on("value", (snapshot) => {
+      const d = [];
+
+      snapshot.forEach((one_account) => {
+        if (one_account.val().Id !== userid) {
+          d.push(one_account.val());
+        }
+      });
+
+      setContacts(d);
+    });
+
+    ref_all_groups.on("value", (snapshot) => {
+      const d = [];
+
+      snapshot.forEach((one_group) => {
+        const group = one_group.val();
+
+        if (group.members && group.members[userid]) {
+          d.push({
+            key: one_group.key,
+            ...group,
+          });
+        }
+      });
+
+      setGroups(d);
+    });
+
+    return () => {
+      ref_all_accounts.off();
+      ref_all_groups.off();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedGroup) return;
+
+    const ref_messages = ref_all_groups
+      .child(selectedGroup.key)
+      .child("messages");
+
+    ref_messages.on("value", (snapshot) => {
+      const d = [];
+
+      snapshot.forEach((one_message) => {
+        d.push({
+          key: one_message.key,
+          ...one_message.val(),
+        });
+      });
+
+      setGroupMessages(d);
+    });
+
+    return () => {
+      ref_messages.off();
+    };
+  }, [selectedGroup]);
+
+  const toggleContact = (contact) => {
+    const exists = selectedContacts.find((item) => item.Id === contact.Id);
+
+    if (exists) {
+      setSelectedContacts(
+        selectedContacts.filter((item) => item.Id !== contact.Id),
+      );
+    } else {
+      setSelectedContacts([...selectedContacts, contact]);
+    }
+  };
+
+  const createGroup = () => {
+    if (!groupName.trim()) {
+      Alert.alert("Erreur", "Donner un nom au groupe.");
+      return;
+    }
+
+    if (selectedContacts.length < 2) {
+      Alert.alert("Erreur", "Choisir au moins deux contacts.");
+      return;
+    }
+
+    const members = {};
+    members[userid] = true;
+
+    selectedContacts.forEach((contact) => {
+      members[contact.Id] = true;
+    });
+
+    ref_all_groups.push().set({
+      name: groupName,
+      creator: userid,
+      members: members,
+      createdAt: new Date().toLocaleString(),
+    });
+
+    setGroupName("");
+    setSelectedContacts([]);
+    setGroupModalVisible(false);
+  };
+
+  const sendGroupMessage = () => {
+    if (!selectedGroup || !message.trim()) return;
+
+    ref_all_groups
+      .child(selectedGroup.key)
+      .child("messages")
+      .push()
+      .set({
+        idsender: userid,
+        message: message.trim(),
+        time: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      });
+
+    setMessage("");
+  };
+
   return (
-    <View>
-      <Text>Groupe</Text>
-    </View>
+    <ImageBackground
+      source={require("../../assets/backgroundimg1.jpg")}
+      style={styles.container}
+    >
+      {!selectedGroup ? (
+        <>
+          <Text style={styles.title}>Groupes</Text>
+
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => {
+              setGroupModalVisible(true);
+            }}
+          >
+            <Ionicons name="add" size={22} color="white" />
+            <Text style={styles.addText}>Créer un groupe</Text>
+          </TouchableOpacity>
+
+          <FlatList
+            data={groups}
+            keyExtractor={(item) => item.key}
+            style={styles.list}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.groupCard}
+                onPress={() => {
+                  setSelectedGroup(item);
+                }}
+              >
+                <Ionicons name="people" size={26} color="#B135A3" />
+
+                <View style={styles.groupInfo}>
+                  <Text style={styles.groupName}>{item.name}</Text>
+                  <Text style={styles.groupDetails}>Discussion de groupe</Text>
+                </View>
+
+                <Ionicons name="chevron-forward" size={22} color="#777" />
+              </TouchableOpacity>
+            )}
+          />
+        </>
+      ) : (
+        <>
+          <View style={styles.chatHeader}>
+            <TouchableOpacity
+              onPress={() => {
+                setSelectedGroup(null);
+                setGroupMessages([]);
+              }}
+            >
+              <Ionicons name="arrow-back" size={26} color="#2B1B26" />
+            </TouchableOpacity>
+
+            <Text style={styles.chatTitle}>{selectedGroup.name}</Text>
+          </View>
+
+          <FlatList
+            data={groupMessages}
+            keyExtractor={(item) => item.key}
+            style={styles.messagesList}
+            renderItem={({ item }) => {
+              const isSender = item.idsender === userid;
+
+              return (
+                <View
+                  style={[
+                    styles.messageWrapper,
+                    isSender ? styles.senderWrapper : styles.receiverWrapper,
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.messageBubble,
+                      isSender ? styles.senderBubble : styles.receiverBubble,
+                    ]}
+                  >
+                    <Text style={styles.messageText}>{item.message}</Text>
+                    <Text style={styles.timeText}>{item.time}</Text>
+                  </View>
+                </View>
+              );
+            }}
+          />
+
+          <View style={styles.inputContainer}>
+            <TextInput
+              value={message}
+              onChangeText={setMessage}
+              placeholder="Écrire un message..."
+              placeholderTextColor="#777"
+              style={styles.input}
+            />
+
+            <TouchableOpacity
+              style={styles.sendButton}
+              onPress={sendGroupMessage}
+            >
+              <Ionicons name="send" size={20} color="white" />
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
+
+      <Modal visible={groupModalVisible} transparent animationType="fade">
+        <View style={styles.modalContainer}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Nouveau groupe</Text>
+
+            <TextInput
+              value={groupName}
+              onChangeText={setGroupName}
+              placeholder="Nom du groupe"
+              placeholderTextColor="#777"
+              style={styles.groupInput}
+            />
+
+            <Text style={styles.selectTitle}>Choisir les contacts</Text>
+
+            <FlatList
+              data={contacts}
+              keyExtractor={(item, index) => index.toString()}
+              style={styles.contactsList}
+              renderItem={({ item }) => {
+                const selected = selectedContacts.find(
+                  (contact) => contact.Id === item.Id,
+                );
+
+                return (
+                  <TouchableOpacity
+                    style={styles.contactRow}
+                    onPress={() => {
+                      toggleContact(item);
+                    }}
+                  >
+                    <Ionicons
+                      name={selected ? "checkbox" : "square-outline"}
+                      size={22}
+                      color="#B135A3"
+                    />
+
+                    <Text style={styles.contactName}>
+                      {item.Nom || item.Pseudo || item.Email}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              }}
+            />
+
+            <Pressable style={styles.createButton} onPress={createGroup}>
+              <Text style={styles.createText}>Créer</Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.cancelButton}
+              onPress={() => {
+                setGroupModalVisible(false);
+              }}
+            >
+              <Text style={styles.cancelText}>Annuler</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+    </ImageBackground>
   );
 }
 
-const styles = StyleSheet.create({});
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    paddingTop: 35,
+    alignItems: "center",
+  },
+
+  title: {
+    fontSize: 28,
+    fontWeight: "bold",
+    color: "#B135A3",
+    marginBottom: 12,
+  },
+
+  addButton: {
+    flexDirection: "row",
+    backgroundColor: "#B135A3",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    alignItems: "center",
+    marginBottom: 12,
+  },
+
+  addText: {
+    color: "white",
+    fontWeight: "bold",
+    marginLeft: 6,
+  },
+
+  list: {
+    width: "95%",
+  },
+
+  groupCard: {
+    flexDirection: "row",
+    backgroundColor: "#ffffffcc",
+    padding: 12,
+    borderRadius: 14,
+    marginBottom: 10,
+    alignItems: "center",
+  },
+
+  groupInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+
+  groupName: {
+    color: "#2B1B26",
+    fontSize: 17,
+    fontWeight: "bold",
+  },
+
+  groupDetails: {
+    color: "#777",
+    fontSize: 13,
+    marginTop: 2,
+  },
+
+  chatHeader: {
+    width: "95%",
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF8FC",
+    padding: 10,
+    borderRadius: 14,
+    marginBottom: 8,
+  },
+
+  chatTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#2B1B26",
+    marginLeft: 12,
+  },
+
+  messagesList: {
+    width: "100%",
+    flex: 1,
+  },
+
+  messageWrapper: {
+    width: "100%",
+    paddingHorizontal: 10,
+    marginVertical: 6,
+    flexDirection: "row",
+  },
+
+  senderWrapper: {
+    justifyContent: "flex-end",
+  },
+
+  receiverWrapper: {
+    justifyContent: "flex-start",
+  },
+
+  messageBubble: {
+    maxWidth: "78%",
+    paddingVertical: 9,
+    paddingHorizontal: 13,
+    borderRadius: 16,
+  },
+
+  senderBubble: {
+    backgroundColor: "#F7D9F1",
+    borderWidth: 1,
+    borderColor: "#B135A3",
+  },
+
+  receiverBubble: {
+    backgroundColor: "#FFF8FC",
+    borderLeftWidth: 3,
+    borderLeftColor: "#B135A3",
+  },
+
+  messageText: {
+    color: "#2B1B26",
+    fontSize: 15,
+    fontWeight: "500",
+  },
+
+  timeText: {
+    color: "#6D2E5B",
+    fontSize: 11,
+    textAlign: "right",
+    marginTop: 4,
+    fontWeight: "bold",
+  },
+
+  inputContainer: {
+    width: "96%",
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#0006",
+    borderRadius: 25,
+    padding: 7,
+    marginBottom: 8,
+  },
+
+  input: {
+    flex: 1,
+    height: 40,
+    backgroundColor: "#FFF8FC",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    color: "#2B1B26",
+    borderWidth: 1,
+    borderColor: "#B135A3",
+  },
+
+  sendButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#B135A3",
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 5,
+  },
+
+  modalContainer: {
+    flex: 1,
+    backgroundColor: "#0008",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  modalBox: {
+    width: "88%",
+    maxHeight: "85%",
+    backgroundColor: "#FFF8FC",
+    borderRadius: 18,
+    padding: 18,
+    borderWidth: 2,
+    borderColor: "#B135A3",
+  },
+
+  modalTitle: {
+    color: "#2B1B26",
+    fontSize: 23,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 12,
+  },
+
+  groupInput: {
+    height: 45,
+    backgroundColor: "white",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#B135A3",
+    paddingHorizontal: 10,
+    marginBottom: 12,
+    color: "#2B1B26",
+  },
+
+  selectTitle: {
+    color: "#B135A3",
+    fontWeight: "bold",
+    marginBottom: 8,
+  },
+
+  contactsList: {
+    maxHeight: 260,
+  },
+
+  contactRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+
+  contactName: {
+    marginLeft: 10,
+    color: "#2B1B26",
+    fontSize: 15,
+    fontWeight: "bold",
+  },
+
+  createButton: {
+    backgroundColor: "#B135A3",
+    height: 43,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 12,
+  },
+
+  createText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+
+  cancelButton: {
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 8,
+  },
+
+  cancelText: {
+    color: "#777",
+    fontSize: 15,
+    fontWeight: "bold",
+  },
+});
