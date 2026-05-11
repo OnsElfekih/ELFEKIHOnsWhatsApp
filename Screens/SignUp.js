@@ -6,13 +6,18 @@ import {
   Text,
   TextInput,
   View,
+  TouchableOpacity,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useState } from "react";
 import firebase from "../Config";
 
 const auth = firebase.auth();
 
 export default function SignUp(props) {
   var email, password, confirmPassword;
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   return (
     <ImageBackground
@@ -32,25 +37,53 @@ export default function SignUp(props) {
           keyboardType="email-address"
         />
 
-        <TextInput
-          onChangeText={(txt) => {
-            password = txt;
-          }}
-          style={styles.input}
-          placeholder="Mot de passe"
-          placeholderTextColor="#777"
-          secureTextEntry={true}
-        />
+        <View style={styles.passwordContainer}>
+          <TextInput
+            onChangeText={(txt) => {
+              password = txt;
+            }}
+            style={styles.passwordInput}
+            placeholder="Mot de passe"
+            placeholderTextColor="#777"
+            secureTextEntry={!showPassword}
+          />
 
-        <TextInput
-          onChangeText={(txt) => {
-            confirmPassword = txt;
-          }}
-          style={styles.input}
-          placeholder="Confirmer le mot de passe"
-          placeholderTextColor="#777"
-          secureTextEntry={true}
-        />
+          <TouchableOpacity
+            onPress={() => {
+              setShowPassword(!showPassword);
+            }}
+          >
+            <Ionicons
+              name={showPassword ? "eye-off" : "eye"}
+              size={22}
+              color="#6D2E5B"
+            />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.passwordContainer}>
+          <TextInput
+            onChangeText={(txt) => {
+              confirmPassword = txt;
+            }}
+            style={styles.passwordInput}
+            placeholder="Confirmer le mot de passe"
+            placeholderTextColor="#777"
+            secureTextEntry={!showConfirmPassword}
+          />
+
+          <TouchableOpacity
+            onPress={() => {
+              setShowConfirmPassword(!showConfirmPassword);
+            }}
+          >
+            <Ionicons
+              name={showConfirmPassword ? "eye-off" : "eye"}
+              size={22}
+              color="#6D2E5B"
+            />
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.buttonBox}>
           <Button
@@ -148,5 +181,23 @@ const styles = StyleSheet.create({
     marginTop: 15,
     fontSize: 15,
     textDecorationLine: "underline",
+  },
+  passwordContainer: {
+    backgroundColor: colors.input,
+    width: "100%",
+    height: 48,
+    marginBottom: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+  },
+
+  passwordInput: {
+    flex: 1,
+    color: colors.textDark,
+    fontSize: 16,
   },
 });
