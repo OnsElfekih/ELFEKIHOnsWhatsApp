@@ -64,6 +64,10 @@ export default function Groupe(props) {
   const [visibleVideo, setVisibleVideo] = useState(null);
   const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
 
+  const [selectedMessage, setSelectedMessage] = useState(null);
+  const [reactionModalVisible, setReactionModalVisible] = useState(false);
+  const [replyMessage, setReplyMessage] = useState(null);
+
   useEffect(() => {
     if (!userid) return;
 
@@ -192,6 +196,13 @@ export default function Groupe(props) {
       .set({
         idsender: userid,
         message: message.trim(),
+        replyTo: replyMessage
+          ? {
+              message: replyMessage.message || "",
+              imageUrl: replyMessage.imageUrl || "",
+              idsender: replyMessage.idsender,
+            }
+          : null,
         time: new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
@@ -199,6 +210,7 @@ export default function Groupe(props) {
       });
 
     setMessage("");
+    setReplyMessage(null);
   };
   const openMembersModal = () => {
     if (!selectedGroup) return;
@@ -725,6 +737,72 @@ export default function Groupe(props) {
       Alert.alert("Erreur téléchargement", error.message);
     }
   };
+  const addReaction = (reaction) => {
+    if (!selectedGroup || !selectedMessage) return;
+
+    ref_all_groups
+      .child(selectedGroup.key)
+      .child("messages")
+      .child(selectedMessage.key)
+      .child("reaction")
+      .set(reaction);
+
+    setReactionModalVisible(false);
+    setSelectedMessage(null);
+  };
+
+  const deleteForMe = () => {
+    if (!selectedGroup || !selectedMessage) return;
+
+    ref_all_groups
+      .child(selectedGroup.key)
+      .child("messages")
+      .child(selectedMessage.key)
+      .child("deletedFor")
+      .child(userid)
+      .set(true);
+
+    setReactionModalVisible(false);
+    setSelectedMessage(null);
+  };
+
+  const deleteForEveryone = () => {
+    if (!selectedGroup || !selectedMessage) return;
+
+    ref_all_groups
+      .child(selectedGroup.key)
+      .child("messages")
+      .child(selectedMessage.key)
+      .update({
+        message: "Supprimé pour tous",
+        imageUrl: null,
+        videoUrl: null,
+        audioUrl: null,
+        latitude: null,
+        longitude: null,
+        isLocation: false,
+        deletedForEveryone: true,
+        reaction: null,
+        replyTo: null,
+      });
+
+    setReactionModalVisible(false);
+    setSelectedMessage(null);
+  };
+
+  const pinMessage = () => {
+    if (!selectedGroup || !selectedMessage) return;
+
+    ref_all_groups
+      .child(selectedGroup.key)
+      .child("messages")
+      .child(selectedMessage.key)
+      .child("pinned")
+      .set(true);
+
+    setReactionModalVisible(false);
+    setSelectedMessage(null);
+  };
   return (
     <ImageBackground
       source={
@@ -846,7 +924,12 @@ export default function Groupe(props) {
                     isSender ? styles.senderWrapper : styles.receiverWrapper,
                   ]}
                 >
-                  <View
+                  <Pressable
+                    onLongPress={() => {
+                      setSelectedMessage(item);
+                      setReactionModalVisible(true);
+                    }}
+                    delayLongPress={400}
                     style={[
                       styles.messageBubble,
                       isSender ? styles.senderBubble : styles.receiverBubble,
@@ -861,81 +944,159 @@ export default function Groupe(props) {
                           "Membre"}
                       </Text>
                     )}
-                    {item.audioUrl ? (
-                      <TouchableOpacity
-                        style={styles.audioBox}
-                        onPress={() =>
-                          playAudioMessage(item.audioUrl, item.key)
-                        }
-                      >
-                        <Ionicons
-                          name={
-                            playingAudio === item.key ? "volume-high" : "play"
-                          }
-                          size={22}
-                          color="white"
-                        />
-                        <Text style={styles.audioText}>Message vocal</Text>
-                      </TouchableOpacity>
-                    ) : item.videoUrl ? (
-                      <TouchableOpacity
-                        onPress={() => {
-                          setVisibleVideo(String(item.videoUrl));
-                          setIsVideoModalVisible(true);
-                        }}
-                      >
-                        <Video
-                          source={{ uri: String(item.videoUrl) }}
-                          style={styles.video}
-                          useNativeControls
-                          resizeMode="contain"
-                        />
-                      </TouchableOpacity>
-                    ) : item.imageUrl ? (
-                      <TouchableOpacity
-                        onPress={() => {
-                          setVisibleImage(String(item.imageUrl));
-                          setIsImageModalVisible(true);
-                        }}
-                      >
-                        <Image
-                          source={{ uri: String(item.imageUrl) }}
-                          style={styles.messageImage}
-                        />
-                      </TouchableOpacity>
-                    ) : item.isLocation ? (
-                      <TouchableOpacity
-                        onPress={() => {
-                          Linking.openURL(
-                            `https://www.google.com/maps?q=${item.latitude},${item.longitude}`,
-                          );
-                        }}
-                      >
-                        <Text style={styles.locationText}>
-                          📍 Localisation partagée
-                        </Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <Text
-                        style={
-                          item.idsender === "system"
-                            ? styles.systemText
-                            : styles.messageText
-                        }
-                      >
-                        {String(item.message || "")}
+                    {item.deletedFor && item.deletedFor[userid] ? (
+                      <Text style={styles.deletedMessageText}>
+                        Supprimé pour moi
                       </Text>
+                    ) : item.deletedForEveryone ? (
+                      <Text style={styles.deletedMessageText}>
+                        Supprimé pour tous
+                      </Text>
+                    ) : (
+                      <>
+                        {item.replyTo && (
+                          <View style={styles.replyPreview}>
+                            <Text style={styles.replyPreviewTitle}>
+                              Réponse
+                            </Text>
+                            <Text style={styles.replyPreviewText}>
+                              {item.replyTo.message
+                                ? item.replyTo.message
+                                : item.replyTo.imageUrl
+                                  ? "Image"
+                                  : "Message"}
+                            </Text>
+                          </View>
+                        )}
+
+                        {item.audioUrl ? (
+                          <TouchableOpacity
+                            style={styles.audioBox}
+                            onPress={() => {
+                              playAudioMessage(item.audioUrl, item.key);
+                            }}
+                          >
+                            <Ionicons
+                              name={
+                                playingAudio === item.key
+                                  ? "volume-high"
+                                  : "play"
+                              }
+                              size={22}
+                              color="white"
+                            />
+                            <Text style={styles.audioText}>Message vocal</Text>
+                          </TouchableOpacity>
+                        ) : item.videoUrl ? (
+                          <TouchableOpacity
+                            onPress={() => {
+                              setVisibleVideo(String(item.videoUrl));
+                              setIsVideoModalVisible(true);
+                            }}
+                          >
+                            <Video
+                              source={{ uri: String(item.videoUrl) }}
+                              style={styles.video}
+                              useNativeControls
+                              resizeMode="contain"
+                            />
+                          </TouchableOpacity>
+                        ) : item.imageUrl ? (
+                          <TouchableOpacity
+                            onPress={() => {
+                              setVisibleImage(String(item.imageUrl));
+                              setIsImageModalVisible(true);
+                            }}
+                          >
+                            <Image
+                              source={{ uri: String(item.imageUrl) }}
+                              style={styles.messageImage}
+                            />
+                          </TouchableOpacity>
+                        ) : item.isLocation ? (
+                          <TouchableOpacity
+                            onPress={() => {
+                              Linking.openURL(
+                                `https://www.google.com/maps?q=${item.latitude},${item.longitude}`,
+                              );
+                            }}
+                          >
+                            <Text style={styles.locationText}>
+                              📍 Localisation partagée
+                            </Text>
+                          </TouchableOpacity>
+                        ) : (
+                          <Text
+                            style={
+                              item.idsender === "system"
+                                ? styles.systemText
+                                : styles.messageText
+                            }
+                          >
+                            {String(item.message || "")}
+                          </Text>
+                        )}
+                      </>
+                    )}
+
+                    {item.pinned && (
+                      <Text style={styles.pinnedText}>📌 Message épinglé</Text>
                     )}
 
                     <Text style={styles.timeText}>
                       {String(item.time || "")}
                     </Text>
-                  </View>
+
+                    {item.reaction && (
+                      <TouchableOpacity
+                        onPress={() => {
+                          ref_all_groups
+                            .child(selectedGroup.key)
+                            .child("messages")
+                            .child(item.key)
+                            .child("reaction")
+                            .remove();
+                        }}
+                        style={styles.reactionBadge}
+                      >
+                        <Text style={styles.reactionText}>{item.reaction}</Text>
+                      </TouchableOpacity>
+                    )}
+                  </Pressable>
                 </View>
               );
             }}
           />
+          {replyMessage && (
+            <View style={styles.replyBox}>
+              <View style={styles.replyContent}>
+                <Text style={styles.replyTitle}>
+                  Vous répondez à ce message
+                </Text>
 
+                <Text style={styles.replyText}>
+                  {replyMessage.message
+                    ? replyMessage.message
+                    : replyMessage.isLocation
+                      ? "Localisation"
+                      : replyMessage.videoUrl
+                        ? "Vidéo"
+                        : replyMessage.audioUrl
+                          ? "Vocal"
+                          : "Image"}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                onPress={() => {
+                  setReplyMessage(null);
+                }}
+                style={styles.cancelReplyButton}
+              >
+                <Ionicons name="close" size={20} color="white" />
+              </TouchableOpacity>
+            </View>
+          )}
           <View style={styles.inputContainer}>
             <TextInput
               value={message}
@@ -1315,6 +1476,80 @@ export default function Groupe(props) {
                 useNativeControls
                 resizeMode="contain"
               />
+            )}
+          </View>
+        </View>
+      </Modal>
+      <Modal visible={reactionModalVisible} transparent animationType="fade">
+        <View style={styles.actionModalContainer}>
+          <View style={styles.actionBox}>
+            <TouchableOpacity
+              style={styles.closeActionButton}
+              onPress={() => {
+                setReactionModalVisible(false);
+                setSelectedMessage(null);
+              }}
+            >
+              <Ionicons name="close" size={22} color="#2B1B26" />
+            </TouchableOpacity>
+
+            <View style={styles.emojiRow}>
+              <TouchableOpacity onPress={() => addReaction("👍")}>
+                <Text style={styles.reactionIcon}>👍</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => addReaction("❤️")}>
+                <Text style={styles.reactionIcon}>❤️</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => addReaction("😂")}>
+                <Text style={styles.reactionIcon}>😂</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => addReaction("😮")}>
+                <Text style={styles.reactionIcon}>😮</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => addReaction("😢")}>
+                <Text style={styles.reactionIcon}>😢</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => {
+                setReplyMessage(selectedMessage);
+                setReactionModalVisible(false);
+              }}
+            >
+              <Ionicons name="return-down-forward" size={21} color="white" />
+              <Text style={styles.actionText}>Répondre</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionButtonPin}
+              onPress={pinMessage}
+            >
+              <Ionicons name="pin" size={21} color="white" />
+              <Text style={styles.actionText}>Épingler</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionButtonDark}
+              onPress={deleteForMe}
+            >
+              <Ionicons name="trash-outline" size={21} color="white" />
+              <Text style={styles.actionText}>Supprimer pour moi</Text>
+            </TouchableOpacity>
+
+            {selectedMessage?.idsender === userid && (
+              <TouchableOpacity
+                style={styles.actionButtonDanger}
+                onPress={deleteForEveryone}
+              >
+                <Ionicons name="ban-outline" size={21} color="white" />
+                <Text style={styles.actionText}>Supprimer pour tous</Text>
+              </TouchableOpacity>
             )}
           </View>
         </View>
@@ -1871,17 +2106,174 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
 
-  audioBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#B135A3",
-    padding: 10,
-    borderRadius: 18,
+  replyPreview: {
+    backgroundColor: "#ffffff99",
+    borderLeftWidth: 3,
+    borderLeftColor: "#B135A3",
+    padding: 6,
+    borderRadius: 8,
+    marginBottom: 6,
   },
 
-  audioText: {
-    color: "white",
+  replyPreviewTitle: {
+    fontSize: 11,
     fontWeight: "bold",
+    color: "#B135A3",
+  },
+
+  replyPreviewText: {
+    fontSize: 12,
+    color: "#2B1B26",
+  },
+
+  deletedMessageText: {
+    fontSize: 14,
+    color: "#777",
+    fontStyle: "italic",
+  },
+
+  pinnedText: {
+    fontSize: 12,
+    color: "#B135A3",
+    fontWeight: "bold",
+    marginTop: 5,
+  },
+
+  reactionBadge: {
+    position: "absolute",
+    bottom: -14,
+    right: 8,
+    backgroundColor: "#FFF8FC",
+    borderRadius: 14,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: "#B135A3",
+  },
+
+  reactionText: {
+    fontSize: 16,
+  },
+
+  actionModalContainer: {
+    flex: 1,
+    backgroundColor: "#0005",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  actionBox: {
+    width: "86%",
+    backgroundColor: "#FFF8FC",
+    borderRadius: 22,
+    padding: 18,
+    borderWidth: 2,
+    borderColor: "#B135A3",
+    alignItems: "center",
+  },
+
+  closeActionButton: {
+    position: "absolute",
+    top: 10,
+    right: 12,
+  },
+
+  emojiRow: {
+    flexDirection: "row",
+    marginTop: 16,
+    marginBottom: 18,
+  },
+
+  reactionIcon: {
+    fontSize: 28,
+    marginHorizontal: 8,
+  },
+
+  actionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#B135A3",
+    width: "100%",
+    paddingVertical: 11,
+    borderRadius: 14,
+    marginTop: 8,
+  },
+
+  actionButtonPin: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#8E44AD",
+    width: "100%",
+    paddingVertical: 11,
+    borderRadius: 14,
+    marginTop: 8,
+  },
+
+  actionButtonDark: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#3B1D33",
+    width: "100%",
+    paddingVertical: 11,
+    borderRadius: 14,
+    marginTop: 8,
+  },
+
+  actionButtonDanger: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#C62828",
+    width: "100%",
+    paddingVertical: 11,
+    borderRadius: 14,
+    marginTop: 8,
+  },
+
+  actionText: {
+    color: "white",
+    fontSize: 15,
+    fontWeight: "bold",
+    marginLeft: 8,
+  },
+  replyBox: {
+    width: "96%",
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
+    borderLeftWidth: 4,
+    borderLeftColor: "#B135A3",
+    borderRadius: 16,
+    padding: 10,
+    marginBottom: 5,
+  },
+
+  replyContent: {
+    flex: 1,
+  },
+
+  replyTitle: {
+    color: "#B135A3",
+    fontWeight: "bold",
+    fontSize: 13,
+    marginBottom: 2,
+  },
+
+  replyText: {
+    color: "#2B1B26",
+    fontSize: 14,
+  },
+
+  cancelReplyButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#B135A3",
+    justifyContent: "center",
+    alignItems: "center",
     marginLeft: 8,
   },
 });
