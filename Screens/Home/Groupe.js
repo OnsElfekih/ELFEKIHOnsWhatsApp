@@ -11,6 +11,8 @@ import {
   View,
   Alert,
   Linking,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
@@ -869,804 +871,830 @@ export default function Groupe(props) {
     Alert.alert("Transféré", "Message transféré avec succès.");
   };
   return (
-    <ImageBackground
-      source={
-        groupBackground
-          ? { uri: groupBackground }
-          : require("../../assets/backgroundimg1.jpg")
-      }
-      style={styles.container}
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={0}
     >
-      {!selectedGroup ? (
-        <>
-          <Text style={styles.title}>Groupes</Text>
+      <ImageBackground
+        source={
+          groupBackground
+            ? { uri: groupBackground }
+            : require("../../assets/backgroundimg1.jpg")
+        }
+        style={styles.container}
+      >
+        {!selectedGroup ? (
+          <>
+            <Text style={styles.title}>Groupes</Text>
 
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => {
-              setGroupModalVisible(true);
-            }}
-          >
-            <Ionicons name="add" size={22} color="white" />
-            <Text style={styles.addText}>Créer un groupe</Text>
-          </TouchableOpacity>
-
-          <FlatList
-            data={groups}
-            keyExtractor={(item) => item.key}
-            style={styles.list}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.groupCard}
-                onPress={() => {
-                  setSelectedGroup(item);
-                }}
-              >
-                <Ionicons name="people" size={26} color="#B135A3" />
-
-                <View style={styles.groupInfo}>
-                  <Text style={styles.groupName}>{item.name}</Text>
-                  <Text style={styles.groupDetails}>Discussion de groupe</Text>
-                </View>
-
-                <Ionicons name="chevron-forward" size={22} color="#777" />
-              </TouchableOpacity>
-            )}
-          />
-        </>
-      ) : (
-        <>
-          <View style={styles.chatHeader}>
             <TouchableOpacity
+              style={styles.addButton}
               onPress={() => {
-                setSelectedGroup(null);
-                setGroupMessages([]);
+                setGroupModalVisible(true);
               }}
             >
-              <Ionicons name="arrow-back" size={26} color="#2B1B26" />
+              <Ionicons name="add" size={22} color="white" />
+              <Text style={styles.addText}>Créer un groupe</Text>
             </TouchableOpacity>
-
-            <TouchableOpacity
-              onLongPress={() => {
-                setNewGroupName(selectedGroup.name);
-                setGroupNameModalVisible(true);
-              }}
-            >
-              <Text style={styles.chatTitle}>{selectedGroup.name}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={openMembersModal}
-              style={styles.membersButton}
-            >
-              <Ionicons name="people" size={22} color="#B135A3" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={leaveGroup}
-              style={styles.leaveGroupButton}
-            >
-              <Ionicons name="exit" size={20} color="white" />
-            </TouchableOpacity>
-            {selectedGroup?.creator === userid && (
-              <TouchableOpacity
-                onPress={deleteGroup}
-                style={styles.deleteGroupButton}
-              >
-                <Ionicons name="trash" size={20} color="white" />
-              </TouchableOpacity>
-            )}
-          </View>
-          <View style={styles.groupOptionsBox}>
-            <TouchableOpacity
-              style={styles.mediaButton}
-              onPress={() => {
-                setMediaModalVisible(true);
-              }}
-            >
-              <Ionicons name="folder-open" size={20} color="white" />
-              <Text style={styles.mediaButtonText}>Médias partagés</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.mediaButton}
-              onPress={changeGroupBackground}
-            >
-              <Ionicons name="image" size={20} color="white" />
-              <Text style={styles.mediaButtonText}>Changer le fond</Text>
-            </TouchableOpacity>
-          </View>
-
-          <FlatList
-            data={groupMessages}
-            keyExtractor={(item) => item.key}
-            style={styles.messagesList}
-            renderItem={({ item }) => {
-              const isSender = item.idsender === userid;
-
-              return (
-                <View
-                  style={[
-                    styles.messageWrapper,
-                    isSender ? styles.senderWrapper : styles.receiverWrapper,
-                  ]}
-                >
-                  <Pressable
-                    onLongPress={() => {
-                      setSelectedMessage(item);
-                      setReactionModalVisible(true);
-                    }}
-                    delayLongPress={400}
-                    style={[
-                      styles.messageBubble,
-                      isSender ? styles.senderBubble : styles.receiverBubble,
-                    ]}
-                  >
-                    {item.idsender !== userid && item.idsender !== "system" && (
-                      <Text style={styles.senderName}>
-                        {contacts.find((c) => c.Id === item.idsender)?.Nom ||
-                          contacts.find((c) => c.Id === item.idsender)
-                            ?.Pseudo ||
-                          contacts.find((c) => c.Id === item.idsender)?.Email ||
-                          "Membre"}
-                      </Text>
-                    )}
-                    {item.deletedFor && item.deletedFor[userid] ? (
-                      <Text style={styles.deletedMessageText}>
-                        Supprimé pour moi
-                      </Text>
-                    ) : item.deletedForEveryone ? (
-                      <Text style={styles.deletedMessageText}>
-                        Supprimé pour tous
-                      </Text>
-                    ) : (
-                      <>
-                        {item.replyTo && (
-                          <View style={styles.replyPreview}>
-                            <Text style={styles.replyPreviewTitle}>
-                              Réponse
-                            </Text>
-                            <Text style={styles.replyPreviewText}>
-                              {item.replyTo.message
-                                ? item.replyTo.message
-                                : item.replyTo.imageUrl
-                                  ? "Image"
-                                  : "Message"}
-                            </Text>
-                          </View>
-                        )}
-
-                        {item.audioUrl ? (
-                          <TouchableOpacity
-                            style={styles.audioBox}
-                            onPress={() => {
-                              playAudioMessage(item.audioUrl, item.key);
-                            }}
-                          >
-                            <Ionicons
-                              name={
-                                playingAudio === item.key
-                                  ? "volume-high"
-                                  : "play"
-                              }
-                              size={22}
-                              color="white"
-                            />
-                            <Text style={styles.audioText}>Message vocal</Text>
-                          </TouchableOpacity>
-                        ) : item.videoUrl ? (
-                          <TouchableOpacity
-                            onPress={() => {
-                              setVisibleVideo(String(item.videoUrl));
-                              setIsVideoModalVisible(true);
-                            }}
-                          >
-                            <Video
-                              source={{ uri: String(item.videoUrl) }}
-                              style={styles.video}
-                              useNativeControls
-                              resizeMode="contain"
-                            />
-                          </TouchableOpacity>
-                        ) : item.imageUrl ? (
-                          <TouchableOpacity
-                            onPress={() => {
-                              setVisibleImage(String(item.imageUrl));
-                              setIsImageModalVisible(true);
-                            }}
-                          >
-                            <Image
-                              source={{ uri: String(item.imageUrl) }}
-                              style={styles.messageImage}
-                            />
-                          </TouchableOpacity>
-                        ) : item.isLocation ? (
-                          <TouchableOpacity
-                            onPress={() => {
-                              Linking.openURL(
-                                `https://www.google.com/maps?q=${item.latitude},${item.longitude}`,
-                              );
-                            }}
-                          >
-                            <Text style={styles.locationText}>
-                              📍 Localisation partagée
-                            </Text>
-                          </TouchableOpacity>
-                        ) : (
-                          <Text
-                            style={
-                              item.idsender === "system"
-                                ? styles.systemText
-                                : styles.messageText
-                            }
-                          >
-                            {String(item.message || "")}
-                          </Text>
-                        )}
-                      </>
-                    )}
-
-                    {item.pinned && (
-                      <Text style={styles.pinnedText}>📌 Message épinglé</Text>
-                    )}
-
-                    <Text style={styles.timeText}>
-                      {String(item.time || "")}
-                    </Text>
-
-                    {item.reaction && (
-                      <TouchableOpacity
-                        onPress={() => {
-                          ref_all_groups
-                            .child(selectedGroup.key)
-                            .child("messages")
-                            .child(item.key)
-                            .child("reaction")
-                            .remove();
-                        }}
-                        style={styles.reactionBadge}
-                      >
-                        <Text style={styles.reactionText}>{item.reaction}</Text>
-                      </TouchableOpacity>
-                    )}
-                  </Pressable>
-                </View>
-              );
-            }}
-          />
-          {replyMessage && (
-            <View style={styles.replyBox}>
-              <View style={styles.replyContent}>
-                <Text style={styles.replyTitle}>
-                  Vous répondez à ce message
-                </Text>
-
-                <Text style={styles.replyText}>
-                  {replyMessage.message
-                    ? replyMessage.message
-                    : replyMessage.isLocation
-                      ? "Localisation"
-                      : replyMessage.videoUrl
-                        ? "Vidéo"
-                        : replyMessage.audioUrl
-                          ? "Vocal"
-                          : "Image"}
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                onPress={() => {
-                  setReplyMessage(null);
-                }}
-                style={styles.cancelReplyButton}
-              >
-                <Ionicons name="close" size={20} color="white" />
-              </TouchableOpacity>
-            </View>
-          )}
-          <View style={styles.inputContainer}>
-            <TextInput
-              value={message}
-              onChangeText={setMessage}
-              placeholder="Écrire un message..."
-              placeholderTextColor="#777"
-              style={styles.input}
-            />
-
-            <View style={styles.buttonsContainer}>
-              <TouchableOpacity
-                onPress={openCamera}
-                onLongPress={openVideoCamera}
-                style={styles.iconButton}
-              >
-                <Ionicons name="camera" size={22} color="#B135A3" />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={pickImage}
-                onLongPress={pickVideo}
-                style={styles.iconButton}
-              >
-                <Ionicons name="image" size={22} color="#B135A3" />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={sendLocation}
-                style={styles.iconButton}
-              >
-                <Ionicons name="location" size={22} color="#B135A3" />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => {
-                  if (recording) {
-                    stopRecording();
-                  } else {
-                    startRecording();
-                  }
-                }}
-                style={recording ? styles.recordingButton : styles.voiceButton}
-              >
-                <Ionicons
-                  name={recording ? "stop" : "mic"}
-                  size={22}
-                  color="white"
-                />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.sendButton}
-                onPress={sendGroupMessage}
-              >
-                <Ionicons name="send" size={20} color="white" />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </>
-      )}
-
-      <Modal visible={groupModalVisible} transparent animationType="fade">
-        <View style={styles.modalContainer}>
-          <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>Nouveau groupe</Text>
-
-            <TextInput
-              value={groupName}
-              onChangeText={setGroupName}
-              placeholder="Nom du groupe"
-              placeholderTextColor="#777"
-              style={styles.groupInput}
-            />
-
-            <Text style={styles.selectTitle}>Choisir les contacts</Text>
 
             <FlatList
-              data={contacts}
-              keyExtractor={(item, index) => index.toString()}
-              style={styles.contactsList}
-              renderItem={({ item }) => {
-                const selected = selectedContacts.find(
-                  (contact) => contact.Id === item.Id,
-                );
-
-                return (
-                  <TouchableOpacity
-                    style={styles.contactRow}
-                    onPress={() => {
-                      toggleContact(item);
-                    }}
-                  >
-                    <Ionicons
-                      name={selected ? "checkbox" : "square-outline"}
-                      size={22}
-                      color="#B135A3"
-                    />
-
-                    <Text style={styles.contactName}>
-                      {item.Nom || item.Pseudo || item.Email}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              }}
-            />
-
-            <Pressable style={styles.createButton} onPress={createGroup}>
-              <Text style={styles.createText}>Créer</Text>
-            </Pressable>
-
-            <Pressable
-              style={styles.cancelButton}
-              onPress={() => {
-                setGroupModalVisible(false);
-              }}
-            >
-              <Text style={styles.cancelText}>Annuler</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-      <Modal visible={membersModalVisible} transparent animationType="fade">
-        <View style={styles.modalContainer}>
-          <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>Membres du groupe</Text>
-
-            <FlatList
-              data={groupMembers}
-              keyExtractor={(item, index) => index.toString()}
-              renderItem={({ item }) => (
-                <View style={styles.memberRow}>
-                  <Text style={styles.memberName}>
-                    {item.Nom || item.Pseudo || item.Email}
-                  </Text>
-
-                  {selectedGroup?.creator === userid && (
-                    <TouchableOpacity
-                      style={styles.removeButton}
-                      onPress={() => removeMember(item)}
-                    >
-                      <Ionicons name="person-remove" size={18} color="white" />
-                    </TouchableOpacity>
-                  )}
-                </View>
-              )}
-            />
-            <Pressable style={styles.inviteButton} onPress={openInviteModal}>
-              <Ionicons name="person-add" size={18} color="white" />
-              <Text style={styles.inviteText}>Inviter un contact</Text>
-            </Pressable>
-            <Pressable
-              style={styles.cancelButton}
-              onPress={() => setMembersModalVisible(false)}
-            >
-              <Text style={styles.cancelText}>Fermer</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-      <Modal visible={inviteModalVisible} transparent animationType="fade">
-        <View style={styles.modalContainer}>
-          <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>Inviter un contact</Text>
-
-            <FlatList
-              data={availableContacts}
-              keyExtractor={(item, index) => index.toString()}
-              renderItem={({ item }) => (
-                <View style={styles.memberRow}>
-                  <Text style={styles.memberName}>
-                    {item.Nom || item.Pseudo || item.Email}
-                  </Text>
-
-                  <TouchableOpacity
-                    style={styles.inviteSmallButton}
-                    onPress={() => inviteMember(item)}
-                  >
-                    <Ionicons name="add" size={20} color="white" />
-                  </TouchableOpacity>
-                </View>
-              )}
-            />
-
-            <Pressable
-              style={styles.cancelButton}
-              onPress={() => setInviteModalVisible(false)}
-            >
-              <Text style={styles.cancelText}>Fermer</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-      <Modal visible={mediaModalVisible} transparent animationType="fade">
-        <View style={styles.modalContainer}>
-          <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>Médias partagés</Text>
-
-            <View style={styles.mediaTabs}>
-              <TouchableOpacity onPress={() => setMediaType("images")}>
-                <Text style={styles.mediaTab}>Images</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={() => setMediaType("videos")}>
-                <Text style={styles.mediaTab}>Vidéos</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={() => setMediaType("links")}>
-                <Text style={styles.mediaTab}>Liens</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={() => setMediaType("pinned")}>
-                <Text style={styles.mediaTab}>Épinglés</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={() => setMediaType("locations")}>
-                <Text style={styles.mediaTab}>Localisations</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={() => setMediaType("audios")}>
-                <Text style={styles.mediaTab}>Vocaux</Text>
-              </TouchableOpacity>
-            </View>
-
-            <FlatList
-              data={getGroupMedia()}
-              keyExtractor={(item, index) => index.toString()}
+              data={groups}
+              keyExtractor={(item) => item.key}
+              style={styles.list}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={styles.mediaItem}
+                  style={styles.groupCard}
                   onPress={() => {
-                    if (item.isLocation) {
-                      Linking.openURL(
-                        `https://www.google.com/maps?q=${item.latitude},${item.longitude}`,
-                      );
-                    } else if (item.message) {
-                      Linking.openURL(String(item.message));
-                    }
+                    setSelectedGroup(item);
                   }}
                 >
-                  {item.audioUrl ? (
+                  <Ionicons name="people" size={26} color="#B135A3" />
+
+                  <View style={styles.groupInfo}>
+                    <Text style={styles.groupName}>{item.name}</Text>
+                    <Text style={styles.groupDetails}>
+                      Discussion de groupe
+                    </Text>
+                  </View>
+
+                  <Ionicons name="chevron-forward" size={22} color="#777" />
+                </TouchableOpacity>
+              )}
+            />
+          </>
+        ) : (
+          <>
+            <View style={styles.chatHeader}>
+              <TouchableOpacity
+                onPress={() => {
+                  setSelectedGroup(null);
+                  setGroupMessages([]);
+                }}
+              >
+                <Ionicons name="arrow-back" size={26} color="#2B1B26" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onLongPress={() => {
+                  setNewGroupName(selectedGroup.name);
+                  setGroupNameModalVisible(true);
+                }}
+              >
+                <Text style={styles.chatTitle}>{selectedGroup.name}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={openMembersModal}
+                style={styles.membersButton}
+              >
+                <Ionicons name="people" size={22} color="#B135A3" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={leaveGroup}
+                style={styles.leaveGroupButton}
+              >
+                <Ionicons name="exit" size={20} color="white" />
+              </TouchableOpacity>
+              {selectedGroup?.creator === userid && (
+                <TouchableOpacity
+                  onPress={deleteGroup}
+                  style={styles.deleteGroupButton}
+                >
+                  <Ionicons name="trash" size={20} color="white" />
+                </TouchableOpacity>
+              )}
+            </View>
+            <View style={styles.groupOptionsBox}>
+              <TouchableOpacity
+                style={styles.mediaButton}
+                onPress={() => {
+                  setMediaModalVisible(true);
+                }}
+              >
+                <Ionicons name="folder-open" size={20} color="white" />
+                <Text style={styles.mediaButtonText}>Médias partagés</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.mediaButton}
+                onPress={changeGroupBackground}
+              >
+                <Ionicons name="image" size={20} color="white" />
+                <Text style={styles.mediaButtonText}>Changer le fond</Text>
+              </TouchableOpacity>
+            </View>
+
+            <FlatList
+              data={groupMessages}
+              keyExtractor={(item) => item.key}
+              style={styles.messagesList}
+              renderItem={({ item }) => {
+                const isSender = item.idsender === userid;
+
+                return (
+                  <View
+                    style={[
+                      styles.messageWrapper,
+                      isSender ? styles.senderWrapper : styles.receiverWrapper,
+                    ]}
+                  >
+                    <Pressable
+                      onLongPress={() => {
+                        setSelectedMessage(item);
+                        setReactionModalVisible(true);
+                      }}
+                      delayLongPress={400}
+                      style={[
+                        styles.messageBubble,
+                        isSender ? styles.senderBubble : styles.receiverBubble,
+                      ]}
+                    >
+                      {item.idsender !== userid &&
+                        item.idsender !== "system" && (
+                          <Text style={styles.senderName}>
+                            {contacts.find((c) => c.Id === item.idsender)
+                              ?.Nom ||
+                              contacts.find((c) => c.Id === item.idsender)
+                                ?.Pseudo ||
+                              contacts.find((c) => c.Id === item.idsender)
+                                ?.Email ||
+                              "Membre"}
+                          </Text>
+                        )}
+                      {item.deletedFor && item.deletedFor[userid] ? (
+                        <Text style={styles.deletedMessageText}>
+                          Supprimé pour moi
+                        </Text>
+                      ) : item.deletedForEveryone ? (
+                        <Text style={styles.deletedMessageText}>
+                          Supprimé pour tous
+                        </Text>
+                      ) : (
+                        <>
+                          {item.replyTo && (
+                            <View style={styles.replyPreview}>
+                              <Text style={styles.replyPreviewTitle}>
+                                Réponse
+                              </Text>
+                              <Text style={styles.replyPreviewText}>
+                                {item.replyTo.message
+                                  ? item.replyTo.message
+                                  : item.replyTo.imageUrl
+                                    ? "Image"
+                                    : "Message"}
+                              </Text>
+                            </View>
+                          )}
+
+                          {item.audioUrl ? (
+                            <TouchableOpacity
+                              style={styles.audioBox}
+                              onPress={() => {
+                                playAudioMessage(item.audioUrl, item.key);
+                              }}
+                            >
+                              <Ionicons
+                                name={
+                                  playingAudio === item.key
+                                    ? "volume-high"
+                                    : "play"
+                                }
+                                size={22}
+                                color="white"
+                              />
+                              <Text style={styles.audioText}>
+                                Message vocal
+                              </Text>
+                            </TouchableOpacity>
+                          ) : item.videoUrl ? (
+                            <TouchableOpacity
+                              onPress={() => {
+                                setVisibleVideo(String(item.videoUrl));
+                                setIsVideoModalVisible(true);
+                              }}
+                            >
+                              <Video
+                                source={{ uri: String(item.videoUrl) }}
+                                style={styles.video}
+                                useNativeControls
+                                resizeMode="contain"
+                              />
+                            </TouchableOpacity>
+                          ) : item.imageUrl ? (
+                            <TouchableOpacity
+                              onPress={() => {
+                                setVisibleImage(String(item.imageUrl));
+                                setIsImageModalVisible(true);
+                              }}
+                            >
+                              <Image
+                                source={{ uri: String(item.imageUrl) }}
+                                style={styles.messageImage}
+                              />
+                            </TouchableOpacity>
+                          ) : item.isLocation ? (
+                            <TouchableOpacity
+                              onPress={() => {
+                                Linking.openURL(
+                                  `https://www.google.com/maps?q=${item.latitude},${item.longitude}`,
+                                );
+                              }}
+                            >
+                              <Text style={styles.locationText}>
+                                📍 Localisation partagée
+                              </Text>
+                            </TouchableOpacity>
+                          ) : (
+                            <Text
+                              style={
+                                item.idsender === "system"
+                                  ? styles.systemText
+                                  : styles.messageText
+                              }
+                            >
+                              {String(item.message || "")}
+                            </Text>
+                          )}
+                        </>
+                      )}
+
+                      {item.pinned && (
+                        <Text style={styles.pinnedText}>
+                          📌 Message épinglé
+                        </Text>
+                      )}
+
+                      <Text style={styles.timeText}>
+                        {String(item.time || "")}
+                      </Text>
+
+                      {item.reaction && (
+                        <TouchableOpacity
+                          onPress={() => {
+                            ref_all_groups
+                              .child(selectedGroup.key)
+                              .child("messages")
+                              .child(item.key)
+                              .child("reaction")
+                              .remove();
+                          }}
+                          style={styles.reactionBadge}
+                        >
+                          <Text style={styles.reactionText}>
+                            {item.reaction}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </Pressable>
+                  </View>
+                );
+              }}
+            />
+            {replyMessage && (
+              <View style={styles.replyBox}>
+                <View style={styles.replyContent}>
+                  <Text style={styles.replyTitle}>
+                    Vous répondez à ce message
+                  </Text>
+
+                  <Text style={styles.replyText}>
+                    {replyMessage.message
+                      ? replyMessage.message
+                      : replyMessage.isLocation
+                        ? "Localisation"
+                        : replyMessage.videoUrl
+                          ? "Vidéo"
+                          : replyMessage.audioUrl
+                            ? "Vocal"
+                            : "Image"}
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  onPress={() => {
+                    setReplyMessage(null);
+                  }}
+                  style={styles.cancelReplyButton}
+                >
+                  <Ionicons name="close" size={20} color="white" />
+                </TouchableOpacity>
+              </View>
+            )}
+            <View style={styles.inputContainer}>
+              <TextInput
+                value={message}
+                onChangeText={setMessage}
+                placeholder="Écrire un message..."
+                placeholderTextColor="#777"
+                style={styles.input}
+              />
+
+              <View style={styles.buttonsContainer}>
+                <TouchableOpacity
+                  onPress={openCamera}
+                  onLongPress={openVideoCamera}
+                  style={styles.iconButton}
+                >
+                  <Ionicons name="camera" size={22} color="#B135A3" />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={pickImage}
+                  onLongPress={pickVideo}
+                  style={styles.iconButton}
+                >
+                  <Ionicons name="image" size={22} color="#B135A3" />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={sendLocation}
+                  style={styles.iconButton}
+                >
+                  <Ionicons name="location" size={22} color="#B135A3" />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => {
+                    if (recording) {
+                      stopRecording();
+                    } else {
+                      startRecording();
+                    }
+                  }}
+                  style={
+                    recording ? styles.recordingButton : styles.voiceButton
+                  }
+                >
+                  <Ionicons
+                    name={recording ? "stop" : "mic"}
+                    size={22}
+                    color="white"
+                  />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.sendButton}
+                  onPress={sendGroupMessage}
+                >
+                  <Ionicons name="send" size={20} color="white" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </>
+        )}
+
+        <Modal visible={groupModalVisible} transparent animationType="fade">
+          <View style={styles.modalContainer}>
+            <View style={styles.modalBox}>
+              <Text style={styles.modalTitle}>Nouveau groupe</Text>
+
+              <TextInput
+                value={groupName}
+                onChangeText={setGroupName}
+                placeholder="Nom du groupe"
+                placeholderTextColor="#777"
+                style={styles.groupInput}
+              />
+
+              <Text style={styles.selectTitle}>Choisir les contacts</Text>
+
+              <FlatList
+                data={contacts}
+                keyExtractor={(item, index) => index.toString()}
+                style={styles.contactsList}
+                renderItem={({ item }) => {
+                  const selected = selectedContacts.find(
+                    (contact) => contact.Id === item.Id,
+                  );
+
+                  return (
                     <TouchableOpacity
-                      style={styles.audioBox}
+                      style={styles.contactRow}
                       onPress={() => {
-                        playAudioMessage(item.audioUrl, item.key);
+                        toggleContact(item);
                       }}
                     >
                       <Ionicons
-                        name={
-                          playingAudio === item.key ? "volume-high" : "play"
-                        }
+                        name={selected ? "checkbox" : "square-outline"}
                         size={22}
-                        color="white"
+                        color="#B135A3"
                       />
-                      <Text style={styles.audioText}>Message vocal</Text>
+
+                      <Text style={styles.contactName}>
+                        {item.Nom || item.Pseudo || item.Email}
+                      </Text>
                     </TouchableOpacity>
-                  ) : item.videoUrl ? (
+                  );
+                }}
+              />
+
+              <Pressable style={styles.createButton} onPress={createGroup}>
+                <Text style={styles.createText}>Créer</Text>
+              </Pressable>
+
+              <Pressable
+                style={styles.cancelButton}
+                onPress={() => {
+                  setGroupModalVisible(false);
+                }}
+              >
+                <Text style={styles.cancelText}>Annuler</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+        <Modal visible={membersModalVisible} transparent animationType="fade">
+          <View style={styles.modalContainer}>
+            <View style={styles.modalBox}>
+              <Text style={styles.modalTitle}>Membres du groupe</Text>
+
+              <FlatList
+                data={groupMembers}
+                keyExtractor={(item, index) => index.toString()}
+                renderItem={({ item }) => (
+                  <View style={styles.memberRow}>
+                    <Text style={styles.memberName}>
+                      {item.Nom || item.Pseudo || item.Email}
+                    </Text>
+
+                    {selectedGroup?.creator === userid && (
+                      <TouchableOpacity
+                        style={styles.removeButton}
+                        onPress={() => removeMember(item)}
+                      >
+                        <Ionicons
+                          name="person-remove"
+                          size={18}
+                          color="white"
+                        />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                )}
+              />
+              <Pressable style={styles.inviteButton} onPress={openInviteModal}>
+                <Ionicons name="person-add" size={18} color="white" />
+                <Text style={styles.inviteText}>Inviter un contact</Text>
+              </Pressable>
+              <Pressable
+                style={styles.cancelButton}
+                onPress={() => setMembersModalVisible(false)}
+              >
+                <Text style={styles.cancelText}>Fermer</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+        <Modal visible={inviteModalVisible} transparent animationType="fade">
+          <View style={styles.modalContainer}>
+            <View style={styles.modalBox}>
+              <Text style={styles.modalTitle}>Inviter un contact</Text>
+
+              <FlatList
+                data={availableContacts}
+                keyExtractor={(item, index) => index.toString()}
+                renderItem={({ item }) => (
+                  <View style={styles.memberRow}>
+                    <Text style={styles.memberName}>
+                      {item.Nom || item.Pseudo || item.Email}
+                    </Text>
+
                     <TouchableOpacity
-                      onPress={() => {
-                        setVisibleVideo(String(item.videoUrl));
-                        setIsVideoModalVisible(true);
-                      }}
+                      style={styles.inviteSmallButton}
+                      onPress={() => inviteMember(item)}
                     >
-                      <Video
-                        source={{ uri: String(item.videoUrl) }}
-                        style={styles.video}
-                        useNativeControls
-                        resizeMode="contain"
-                      />
+                      <Ionicons name="add" size={20} color="white" />
                     </TouchableOpacity>
-                  ) : item.imageUrl ? (
-                    <TouchableOpacity
-                      onPress={() => {
-                        setVisibleImage(String(item.imageUrl));
-                        setIsImageModalVisible(true);
-                      }}
-                    >
-                      <Image
-                        source={{ uri: String(item.imageUrl) }}
-                        style={styles.messageImage}
-                      />
-                    </TouchableOpacity>
-                  ) : item.isLocation ? (
-                    <Text style={styles.mediaText}>
-                      📍 Localisation partagée
-                    </Text>
-                  ) : item.pinned ? (
-                    <Text style={styles.mediaText}>
-                      📌 {item.message || "Message épinglé"}
-                    </Text>
-                  ) : (
-                    <Text style={styles.mediaText}>
-                      {String(item.message || "")}
-                    </Text>
-                  )}
+                  </View>
+                )}
+              />
+
+              <Pressable
+                style={styles.cancelButton}
+                onPress={() => setInviteModalVisible(false)}
+              >
+                <Text style={styles.cancelText}>Fermer</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+        <Modal visible={mediaModalVisible} transparent animationType="fade">
+          <View style={styles.modalContainer}>
+            <View style={styles.modalBox}>
+              <Text style={styles.modalTitle}>Médias partagés</Text>
+
+              <View style={styles.mediaTabs}>
+                <TouchableOpacity onPress={() => setMediaType("images")}>
+                  <Text style={styles.mediaTab}>Images</Text>
                 </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => setMediaType("videos")}>
+                  <Text style={styles.mediaTab}>Vidéos</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => setMediaType("links")}>
+                  <Text style={styles.mediaTab}>Liens</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => setMediaType("pinned")}>
+                  <Text style={styles.mediaTab}>Épinglés</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => setMediaType("locations")}>
+                  <Text style={styles.mediaTab}>Localisations</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => setMediaType("audios")}>
+                  <Text style={styles.mediaTab}>Vocaux</Text>
+                </TouchableOpacity>
+              </View>
+
+              <FlatList
+                data={getGroupMedia()}
+                keyExtractor={(item, index) => index.toString()}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.mediaItem}
+                    onPress={() => {
+                      if (item.isLocation) {
+                        Linking.openURL(
+                          `https://www.google.com/maps?q=${item.latitude},${item.longitude}`,
+                        );
+                      } else if (item.message) {
+                        Linking.openURL(String(item.message));
+                      }
+                    }}
+                  >
+                    {item.audioUrl ? (
+                      <TouchableOpacity
+                        style={styles.audioBox}
+                        onPress={() => {
+                          playAudioMessage(item.audioUrl, item.key);
+                        }}
+                      >
+                        <Ionicons
+                          name={
+                            playingAudio === item.key ? "volume-high" : "play"
+                          }
+                          size={22}
+                          color="white"
+                        />
+                        <Text style={styles.audioText}>Message vocal</Text>
+                      </TouchableOpacity>
+                    ) : item.videoUrl ? (
+                      <TouchableOpacity
+                        onPress={() => {
+                          setVisibleVideo(String(item.videoUrl));
+                          setIsVideoModalVisible(true);
+                        }}
+                      >
+                        <Video
+                          source={{ uri: String(item.videoUrl) }}
+                          style={styles.video}
+                          useNativeControls
+                          resizeMode="contain"
+                        />
+                      </TouchableOpacity>
+                    ) : item.imageUrl ? (
+                      <TouchableOpacity
+                        onPress={() => {
+                          setVisibleImage(String(item.imageUrl));
+                          setIsImageModalVisible(true);
+                        }}
+                      >
+                        <Image
+                          source={{ uri: String(item.imageUrl) }}
+                          style={styles.messageImage}
+                        />
+                      </TouchableOpacity>
+                    ) : item.isLocation ? (
+                      <Text style={styles.mediaText}>
+                        📍 Localisation partagée
+                      </Text>
+                    ) : item.pinned ? (
+                      <Text style={styles.mediaText}>
+                        📌 {item.message || "Message épinglé"}
+                      </Text>
+                    ) : (
+                      <Text style={styles.mediaText}>
+                        {String(item.message || "")}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                )}
+              />
+
+              <Pressable
+                style={styles.cancelButton}
+                onPress={() => setMediaModalVisible(false)}
+              >
+                <Text style={styles.cancelText}>Fermer</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+        <Modal visible={groupNameModalVisible} transparent animationType="fade">
+          <View style={styles.modalContainer}>
+            <View style={styles.modalBox}>
+              <Text style={styles.modalTitle}>Modifier le nom du groupe</Text>
+
+              <TextInput
+                value={newGroupName}
+                onChangeText={setNewGroupName}
+                placeholder="Nouveau nom du groupe"
+                placeholderTextColor="#777"
+                style={styles.groupInput}
+              />
+
+              <Pressable style={styles.createButton} onPress={changeGroupName}>
+                <Text style={styles.createText}>Enregistrer</Text>
+              </Pressable>
+
+              <Pressable
+                style={styles.cancelButton}
+                onPress={() => setGroupNameModalVisible(false)}
+              >
+                <Text style={styles.cancelText}>Annuler</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+        <Modal visible={isImageModalVisible} transparent animationType="fade">
+          <View style={styles.fullScreenContainer}>
+            <TouchableOpacity
+              style={styles.closeImageButton}
+              onPress={() => setIsImageModalVisible(false)}
+            >
+              <Ionicons name="close" size={35} color="white" />
+            </TouchableOpacity>
+
+            <View style={styles.imageBox}>
+              {visibleImage && (
+                <Image
+                  source={{ uri: visibleImage }}
+                  style={styles.fullScreenImage}
+                  resizeMode="contain"
+                />
               )}
-            />
 
-            <Pressable
-              style={styles.cancelButton}
-              onPress={() => setMediaModalVisible(false)}
-            >
-              <Text style={styles.cancelText}>Fermer</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-      <Modal visible={groupNameModalVisible} transparent animationType="fade">
-        <View style={styles.modalContainer}>
-          <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>Modifier le nom du groupe</Text>
-
-            <TextInput
-              value={newGroupName}
-              onChangeText={setNewGroupName}
-              placeholder="Nouveau nom du groupe"
-              placeholderTextColor="#777"
-              style={styles.groupInput}
-            />
-
-            <Pressable style={styles.createButton} onPress={changeGroupName}>
-              <Text style={styles.createText}>Enregistrer</Text>
-            </Pressable>
-
-            <Pressable
-              style={styles.cancelButton}
-              onPress={() => setGroupNameModalVisible(false)}
-            >
-              <Text style={styles.cancelText}>Annuler</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-      <Modal visible={isImageModalVisible} transparent animationType="fade">
-        <View style={styles.fullScreenContainer}>
-          <TouchableOpacity
-            style={styles.closeImageButton}
-            onPress={() => setIsImageModalVisible(false)}
-          >
-            <Ionicons name="close" size={35} color="white" />
-          </TouchableOpacity>
-
-          <View style={styles.imageBox}>
-            {visibleImage && (
-              <Image
-                source={{ uri: visibleImage }}
-                style={styles.fullScreenImage}
-                resizeMode="contain"
-              />
-            )}
-
-            <TouchableOpacity
-              style={styles.downloadButton}
-              onPress={() => {
-                downloadImage(visibleImage);
-              }}
-            >
-              <Ionicons name="download" size={24} color="white" />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-      <Modal visible={isVideoModalVisible} transparent animationType="fade">
-        <View style={styles.fullScreenContainer}>
-          <TouchableOpacity
-            style={styles.closeImageButton}
-            onPress={() => setIsVideoModalVisible(false)}
-          >
-            <Ionicons name="close" size={35} color="white" />
-          </TouchableOpacity>
-
-          <View style={styles.imageBox}>
-            {visibleVideo && (
-              <Video
-                source={{ uri: visibleVideo }}
-                style={styles.fullScreenVideo}
-                useNativeControls
-                resizeMode="contain"
-              />
-            )}
-          </View>
-        </View>
-      </Modal>
-      <Modal visible={reactionModalVisible} transparent animationType="fade">
-        <View style={styles.actionModalContainer}>
-          <View style={styles.actionBox}>
-            <TouchableOpacity
-              style={styles.closeActionButton}
-              onPress={() => {
-                setReactionModalVisible(false);
-                setSelectedMessage(null);
-              }}
-            >
-              <Ionicons name="close" size={22} color="#2B1B26" />
-            </TouchableOpacity>
-
-            <View style={styles.emojiRow}>
-              <TouchableOpacity onPress={() => addReaction("👍")}>
-                <Text style={styles.reactionIcon}>👍</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={() => addReaction("❤️")}>
-                <Text style={styles.reactionIcon}>❤️</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={() => addReaction("😂")}>
-                <Text style={styles.reactionIcon}>😂</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={() => addReaction("😮")}>
-                <Text style={styles.reactionIcon}>😮</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={() => addReaction("😢")}>
-                <Text style={styles.reactionIcon}>😢</Text>
+              <TouchableOpacity
+                style={styles.downloadButton}
+                onPress={() => {
+                  downloadImage(visibleImage);
+                }}
+              >
+                <Ionicons name="download" size={24} color="white" />
               </TouchableOpacity>
             </View>
-
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => {
-                setReplyMessage(selectedMessage);
-                setReactionModalVisible(false);
-              }}
-            >
-              <Ionicons name="return-down-forward" size={21} color="white" />
-              <Text style={styles.actionText}>Répondre</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton} onPress={copyMessage}>
-              <Ionicons name="copy" size={21} color="white" />
-              <Text style={styles.actionText}>Copier</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={forwardMessage}
-            >
-              <Ionicons name="arrow-redo" size={21} color="white" />
-              <Text style={styles.actionText}>Transférer</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.actionButtonPin}
-              onPress={pinMessage}
-            >
-              <Ionicons name="pin" size={21} color="white" />
-              <Text style={styles.actionText}>Épingler</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.actionButtonDark}
-              onPress={deleteForMe}
-            >
-              <Ionicons name="trash-outline" size={21} color="white" />
-              <Text style={styles.actionText}>Supprimer pour moi</Text>
-            </TouchableOpacity>
-
-            {selectedMessage?.idsender === userid && (
-              <TouchableOpacity
-                style={styles.actionButtonDanger}
-                onPress={deleteForEveryone}
-              >
-                <Ionicons name="ban-outline" size={21} color="white" />
-                <Text style={styles.actionText}>Supprimer pour tous</Text>
-              </TouchableOpacity>
-            )}
           </View>
-        </View>
-      </Modal>
-      <Modal visible={forwardModalVisible} transparent animationType="fade">
-        <View style={styles.actionModalContainer}>
-          <View style={styles.actionBox}>
-            <Text style={styles.modalTitle}>Transférer à</Text>
+        </Modal>
+        <Modal visible={isVideoModalVisible} transparent animationType="fade">
+          <View style={styles.fullScreenContainer}>
+            <TouchableOpacity
+              style={styles.closeImageButton}
+              onPress={() => setIsVideoModalVisible(false)}
+            >
+              <Ionicons name="close" size={35} color="white" />
+            </TouchableOpacity>
 
-            <FlatList
-              data={contacts}
-              keyExtractor={(item, index) => index.toString()}
-              renderItem={({ item }) => (
+            <View style={styles.imageBox}>
+              {visibleVideo && (
+                <Video
+                  source={{ uri: visibleVideo }}
+                  style={styles.fullScreenVideo}
+                  useNativeControls
+                  resizeMode="contain"
+                />
+              )}
+            </View>
+          </View>
+        </Modal>
+        <Modal visible={reactionModalVisible} transparent animationType="fade">
+          <View style={styles.actionModalContainer}>
+            <View style={styles.actionBox}>
+              <TouchableOpacity
+                style={styles.closeActionButton}
+                onPress={() => {
+                  setReactionModalVisible(false);
+                  setSelectedMessage(null);
+                }}
+              >
+                <Ionicons name="close" size={22} color="#2B1B26" />
+              </TouchableOpacity>
+
+              <View style={styles.emojiRow}>
+                <TouchableOpacity onPress={() => addReaction("👍")}>
+                  <Text style={styles.reactionIcon}>👍</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => addReaction("❤️")}>
+                  <Text style={styles.reactionIcon}>❤️</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => addReaction("😂")}>
+                  <Text style={styles.reactionIcon}>😂</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => addReaction("😮")}>
+                  <Text style={styles.reactionIcon}>😮</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => addReaction("😢")}>
+                  <Text style={styles.reactionIcon}>😢</Text>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => {
+                  setReplyMessage(selectedMessage);
+                  setReactionModalVisible(false);
+                }}
+              >
+                <Ionicons name="return-down-forward" size={21} color="white" />
+                <Text style={styles.actionText}>Répondre</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={copyMessage}
+              >
+                <Ionicons name="copy" size={21} color="white" />
+                <Text style={styles.actionText}>Copier</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={forwardMessage}
+              >
+                <Ionicons name="arrow-redo" size={21} color="white" />
+                <Text style={styles.actionText}>Transférer</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.actionButtonPin}
+                onPress={pinMessage}
+              >
+                <Ionicons name="pin" size={21} color="white" />
+                <Text style={styles.actionText}>Épingler</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.actionButtonDark}
+                onPress={deleteForMe}
+              >
+                <Ionicons name="trash-outline" size={21} color="white" />
+                <Text style={styles.actionText}>Supprimer pour moi</Text>
+              </TouchableOpacity>
+
+              {selectedMessage?.idsender === userid && (
                 <TouchableOpacity
-                  style={styles.forwardContactRow}
-                  onPress={() => sendForwardToContact(item)}
+                  style={styles.actionButtonDanger}
+                  onPress={deleteForEveryone}
                 >
-                  <Ionicons name="person-circle" size={28} color="#B135A3" />
-
-                  <Text style={styles.forwardContactText}>
-                    {item.Nom || item.Pseudo || item.Email || "Contact"}
-                  </Text>
+                  <Ionicons name="ban-outline" size={21} color="white" />
+                  <Text style={styles.actionText}>Supprimer pour tous</Text>
                 </TouchableOpacity>
               )}
-            />
-
-            <TouchableOpacity
-              style={styles.actionButtonDark}
-              onPress={() => {
-                setForwardModalVisible(false);
-                setSelectedMessage(null);
-              }}
-            >
-              <Ionicons name="close" size={21} color="white" />
-              <Text style={styles.actionText}>Annuler</Text>
-            </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      </Modal>
-    </ImageBackground>
+        </Modal>
+        <Modal visible={forwardModalVisible} transparent animationType="fade">
+          <View style={styles.actionModalContainer}>
+            <View style={styles.actionBox}>
+              <Text style={styles.modalTitle}>Transférer à</Text>
+
+              <FlatList
+                data={contacts}
+                keyExtractor={(item, index) => index.toString()}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.forwardContactRow}
+                    onPress={() => sendForwardToContact(item)}
+                  >
+                    <Ionicons name="person-circle" size={28} color="#B135A3" />
+
+                    <Text style={styles.forwardContactText}>
+                      {item.Nom || item.Pseudo || item.Email || "Contact"}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              />
+
+              <TouchableOpacity
+                style={styles.actionButtonDark}
+                onPress={() => {
+                  setForwardModalVisible(false);
+                  setSelectedMessage(null);
+                }}
+              >
+                <Ionicons name="close" size={21} color="white" />
+                <Text style={styles.actionText}>Annuler</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      </ImageBackground>
+    </KeyboardAvoidingView>
   );
 }
 
