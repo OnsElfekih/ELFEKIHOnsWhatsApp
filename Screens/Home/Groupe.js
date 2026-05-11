@@ -32,6 +32,9 @@ export default function Groupe(props) {
   const [groupMessages, setGroupMessages] = useState([]);
   const [message, setMessage] = useState("");
 
+  const [membersModalVisible, setMembersModalVisible] = useState(false);
+  const [groupMembers, setGroupMembers] = useState([]);
+
   useEffect(() => {
     if (!userid) return;
 
@@ -155,6 +158,65 @@ export default function Groupe(props) {
 
     setMessage("");
   };
+  const openMembersModal = () => {
+    if (!selectedGroup) return;
+
+    const membersList = contacts.filter(
+      (contact) => selectedGroup.members && selectedGroup.members[contact.Id],
+    );
+
+    setGroupMembers(membersList);
+    setMembersModalVisible(true);
+  };
+  const removeMember = (member) => {
+    if (!selectedGroup || selectedGroup.creator !== userid) {
+      Alert.alert("Erreur", "Seul l'administrateur peut exclure un membre.");
+      return;
+    }
+
+    Alert.alert(
+      "Confirmation",
+      "Voulez-vous exclure " +
+        (member.Nom || member.Pseudo || member.Email) +
+        " du groupe ?",
+      [
+        {
+          text: "Annuler",
+          style: "cancel",
+        },
+        {
+          text: "Exclure",
+          style: "destructive",
+          onPress: () => {
+            ref_all_groups
+              .child(selectedGroup.key)
+              .child("members")
+              .child(member.Id)
+              .remove();
+
+            ref_all_groups
+              .child(selectedGroup.key)
+              .child("messages")
+              .push()
+              .set({
+                idsender: "system",
+                message:
+                  (member.Nom || member.Pseudo || member.Email) +
+                  " a été exclu du groupe",
+                time: new Date().toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }),
+              });
+
+            setGroupMembers(
+              groupMembers.filter((item) => item.Id !== member.Id),
+            );
+          },
+        },
+      ],
+    );
+  };
 
   return (
     <ImageBackground
@@ -211,6 +273,12 @@ export default function Groupe(props) {
             </TouchableOpacity>
 
             <Text style={styles.chatTitle}>{selectedGroup.name}</Text>
+            <TouchableOpacity
+              onPress={openMembersModal}
+              style={styles.membersButton}
+            >
+              <Ionicons name="people" size={22} color="#B135A3" />
+            </TouchableOpacity>
           </View>
 
           <FlatList
@@ -233,8 +301,19 @@ export default function Groupe(props) {
                       isSender ? styles.senderBubble : styles.receiverBubble,
                     ]}
                   >
-                    <Text style={styles.messageText}>{item.message}</Text>
-                    <Text style={styles.timeText}>{item.time}</Text>
+                    <Text
+                      style={
+                        item.idsender === "system"
+                          ? styles.systemText
+                          : styles.messageText
+                      }
+                    >
+                      {String(item.message || "")}
+                    </Text>
+
+                    <Text style={styles.timeText}>
+                      {String(item.time || "")}
+                    </Text>
                   </View>
                 </View>
               );
@@ -316,6 +395,41 @@ export default function Groupe(props) {
               }}
             >
               <Text style={styles.cancelText}>Annuler</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+      <Modal visible={membersModalVisible} transparent animationType="fade">
+        <View style={styles.modalContainer}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Membres du groupe</Text>
+
+            <FlatList
+              data={groupMembers}
+              keyExtractor={(item, index) => index.toString()}
+              renderItem={({ item }) => (
+                <View style={styles.memberRow}>
+                  <Text style={styles.memberName}>
+                    {item.Nom || item.Pseudo || item.Email}
+                  </Text>
+
+                  {selectedGroup?.creator === userid && (
+                    <TouchableOpacity
+                      style={styles.removeButton}
+                      onPress={() => removeMember(item)}
+                    >
+                      <Ionicons name="person-remove" size={18} color="white" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+            />
+
+            <Pressable
+              style={styles.cancelButton}
+              onPress={() => setMembersModalVisible(false)}
+            >
+              <Text style={styles.cancelText}>Fermer</Text>
             </Pressable>
           </View>
         </View>
@@ -570,5 +684,49 @@ const styles = StyleSheet.create({
     color: "#777",
     fontSize: 15,
     fontWeight: "bold",
+  },
+  membersButton: {
+    marginLeft: "auto",
+    backgroundColor: "#FFF8FC",
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#B135A3",
+  },
+
+  memberRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
+    padding: 10,
+    borderRadius: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "#B135A3",
+  },
+
+  memberName: {
+    flex: 1,
+    color: "#2B1B26",
+    fontSize: 15,
+    fontWeight: "bold",
+  },
+
+  removeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#C62828",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  systemText: {
+    color: "#6D2E5B",
+    fontSize: 13,
+    fontWeight: "bold",
+    textAlign: "center",
   },
 });
