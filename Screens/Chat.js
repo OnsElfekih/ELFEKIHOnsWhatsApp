@@ -50,6 +50,9 @@ export default function Chat(props) {
   const [savedNickname, setSavedNickname] = useState("");
   const [recording, setRecording] = useState(null);
   const [playingAudio, setPlayingAudio] = useState(null);
+  const [myNickname, setMyNickname] = useState("");
+  const [nicknameChoiceVisible, setNicknameChoiceVisible] = useState(false);
+  const [nicknameTarget, setNicknameTarget] = useState("contact");
   const iddiscussion =
     currentid && secondid
       ? currentid > secondid
@@ -58,29 +61,42 @@ export default function Chat(props) {
       : null;
 
   useEffect(() => {
+    if (!iddiscussion) return;
+
     const ref_nickname = ref_all_messages
       .child(iddiscussion)
       .child("nicknames")
       .child(secondid);
 
-    ref_nickname.on("value", (snapshot) => {
-      setSavedNickname(snapshot.val() || "");
-    });
-    if (!iddiscussion) return;
+    const ref_my_nickname = ref_all_messages
+      .child(iddiscussion)
+      .child("nicknames")
+      .child(currentid);
 
     const ref_chat = ref_all_messages.child(iddiscussion).child("chat");
+
     const ref_second_istyping = ref_all_messages
       .child(iddiscussion)
       .child(secondid + "istyping");
 
+    ref_nickname.on("value", (snapshot) => {
+      setSavedNickname(snapshot.val() || "");
+    });
+
+    ref_my_nickname.on("value", (snapshot) => {
+      setMyNickname(snapshot.val() || "");
+    });
+
     ref_chat.on("value", (snapshot) => {
       const d = [];
+
       snapshot.forEach((one_message) => {
         d.push({
           key: one_message.key,
           ...one_message.val(),
         });
       });
+
       setdata(d);
     });
 
@@ -92,8 +108,9 @@ export default function Chat(props) {
       ref_chat.off();
       ref_second_istyping.off();
       ref_nickname.off();
+      ref_my_nickname.off();
     };
-  }, [iddiscussion, secondid]);
+  }, [iddiscussion, secondid, currentid]);
 
   const uploadFileToSupabase = async (url, type = "image") => {
     const response = await fetch(url);
@@ -563,13 +580,35 @@ export default function Chat(props) {
   const saveNickname = () => {
     if (!iddiscussion) return;
 
+    const targetId = nicknameTarget === "contact" ? secondid : currentid;
+
     ref_all_messages
       .child(iddiscussion)
       .child("nicknames")
-      .child(secondid)
+      .child(targetId)
       .set(nickname);
 
-    setSavedNickname(nickname);
+    ref_all_messages
+      .child(iddiscussion)
+      .child("chat")
+      .push()
+      .set({
+        idsender: "system",
+        idreceiver: "system",
+        systemMessage:
+          (myNickname || "Le contact") + " a changé le surnom en " + nickname,
+        time: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      });
+
+    if (nicknameTarget === "contact") {
+      setSavedNickname(nickname);
+    } else {
+      setMyNickname(nickname);
+    }
+
     setNickname("");
     setNicknameModalVisible(false);
   };
@@ -585,8 +624,7 @@ export default function Chat(props) {
       >
         <TouchableOpacity
           onLongPress={() => {
-            setNickname(savedNickname);
-            setNicknameModalVisible(true);
+            setNicknameChoiceVisible(true);
           }}
         >
           <Text style={styles.title}>
@@ -607,6 +645,15 @@ export default function Chat(props) {
           data={data}
           keyExtractor={(item, index) => index.toString()}
           renderItem={({ item }) => {
+            if (item.systemMessage) {
+              return (
+                <View style={styles.systemMessageBox}>
+                  <Text style={styles.systemMessageText}>
+                    {item.systemMessage}
+                  </Text>
+                </View>
+              );
+            }
             const deletedForMe = item.deletedFor && item.deletedFor[currentid];
             const isSender = currentid === item.idsender;
 
@@ -889,6 +936,54 @@ export default function Chat(props) {
             </TouchableOpacity>
           </View>
         </View>
+        <Modal
+          visible={nicknameChoiceVisible}
+          transparent={true}
+          animationType="fade"
+        >
+          <View style={styles.nicknameModalContainer}>
+            <View style={styles.nicknameBox}>
+              <Text style={styles.nicknameTitle}>Surnoms</Text>
+
+              <TouchableOpacity
+                style={styles.nicknameOption}
+                onPress={() => {
+                  setNicknameTarget("contact");
+                  setNickname(savedNickname);
+                  setNicknameChoiceVisible(false);
+                  setNicknameModalVisible(true);
+                }}
+              >
+                <Text style={styles.nicknameOptionText}>
+                  Contact: {savedNickname ? savedNickname : "Nom du contact"}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.nicknameOption}
+                onPress={() => {
+                  setNicknameTarget("me");
+                  setNickname(myNickname);
+                  setNicknameChoiceVisible(false);
+                  setNicknameModalVisible(true);
+                }}
+              >
+                <Text style={styles.nicknameOptionText}>
+                  Moi: {myNickname ? myNickname : "Votre nom"}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.nicknameCancelButton}
+                onPress={() => {
+                  setNicknameChoiceVisible(false);
+                }}
+              >
+                <Text style={styles.nicknameCancelText}>Annuler</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
         <Modal
           visible={nicknameModalVisible}
           transparent={true}
@@ -1791,5 +1886,36 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     marginHorizontal: 1,
     borderRadius: 2,
+  },
+  systemMessageBox: {
+    alignSelf: "center",
+    backgroundColor: "#FFF8FC",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    marginVertical: 6,
+    borderWidth: 1,
+    borderColor: "#B135A3",
+  },
+
+  systemMessageText: {
+    color: "#6D2E5B",
+    fontSize: 12,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  nicknameOption: {
+    width: "100%",
+    backgroundColor: "#B135A3",
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginBottom: 10,
+    alignItems: "center",
+  },
+
+  nicknameOptionText: {
+    color: "white",
+    fontSize: 15,
+    fontWeight: "bold",
   },
 });
