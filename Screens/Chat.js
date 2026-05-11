@@ -23,9 +23,11 @@ import * as Location from "expo-location";
 import { supabase } from "../Config";
 import { Ionicons } from "@expo/vector-icons";
 import { Video, Audio } from "expo-av";
+import * as Clipboard from "expo-clipboard";
 
 const database = firebase.database();
 const ref_all_messages = database.ref("allmessages");
+const ref_all_accounts = database.ref("allaccounts");
 
 export default function Chat(props) {
   const currentid = props.route?.params?.currentid ?? null;
@@ -60,6 +62,9 @@ export default function Chat(props) {
   const [visibleVideo, setVisibleVideo] = useState(null);
   const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
 
+  const [contacts, setContacts] = useState([]);
+  const [forwardModalVisible, setForwardModalVisible] = useState(false);
+
   const iddiscussion =
     currentid && secondid
       ? currentid > secondid
@@ -69,7 +74,19 @@ export default function Chat(props) {
 
   useEffect(() => {
     if (!iddiscussion) return;
+    ref_all_accounts.on("value", (snapshot) => {
+      const d = [];
 
+      snapshot.forEach((one_account) => {
+        const account = one_account.val();
+
+        if (account.Id !== currentid) {
+          d.push(account);
+        }
+      });
+
+      setContacts(d);
+    });
     const ref_nickname = ref_all_messages
       .child(iddiscussion)
       .child("nicknames")
@@ -125,6 +142,7 @@ export default function Chat(props) {
       ref_nickname.off();
       ref_my_nickname.off();
       ref_background.off();
+      ref_all_accounts.off();
     };
   }, [iddiscussion, secondid, currentid]);
   const changeChatBackground = async () => {
@@ -278,6 +296,40 @@ export default function Chat(props) {
           }),
         });
     }
+  };
+  const sendForwardToContact = (contact) => {
+    if (!selectedMessage || !currentid || !contact.Id) return;
+
+    const forwardDiscussionId =
+      currentid > contact.Id ? currentid + contact.Id : contact.Id + currentid;
+
+    const forwardedData = {
+      idsender: currentid,
+      idreceiver: contact.Id,
+      forwarded: true,
+      message: selectedMessage.message || "",
+      imageUrl: selectedMessage.imageUrl || null,
+      videoUrl: selectedMessage.videoUrl || null,
+      audioUrl: selectedMessage.audioUrl || null,
+      latitude: selectedMessage.latitude || null,
+      longitude: selectedMessage.longitude || null,
+      isLocation: selectedMessage.isLocation || false,
+      time: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    };
+
+    ref_all_messages
+      .child(forwardDiscussionId)
+      .child("chat")
+      .push()
+      .set(forwardedData);
+
+    setForwardModalVisible(false);
+    setSelectedMessage(null);
+
+    Alert.alert("Transféré", "Message transféré avec succès.");
   };
   const openVideoCamera = async () => {
     const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
@@ -670,6 +722,34 @@ export default function Chat(props) {
 
     setNickname("");
     setNicknameModalVisible(false);
+  };
+  const copyMessage = async () => {
+    if (!selectedMessage) return;
+
+    const text =
+      selectedMessage.message ||
+      selectedMessage.imageUrl ||
+      selectedMessage.videoUrl ||
+      selectedMessage.audioUrl ||
+      (selectedMessage.isLocation
+        ? `https://www.google.com/maps?q=${selectedMessage.latitude},${selectedMessage.longitude}`
+        : "");
+
+    if (!text) return;
+
+    await Clipboard.setStringAsync(String(text));
+
+    setReactionModalVisible(false);
+    setSelectedMessage(null);
+
+    Alert.alert("Copié", "Message copié.");
+  };
+
+  const forwardMessage = () => {
+    if (!selectedMessage) return;
+
+    setReactionModalVisible(false);
+    setForwardModalVisible(true);
   };
   return (
     <KeyboardAvoidingView
@@ -1234,6 +1314,21 @@ export default function Chat(props) {
                 <Text style={styles.actionText}>Répondre</Text>
               </TouchableOpacity>
               <TouchableOpacity
+                style={styles.actionButton}
+                onPress={copyMessage}
+              >
+                <Ionicons name="copy" size={21} color="white" />
+                <Text style={styles.actionText}>Copier</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={forwardMessage}
+              >
+                <Ionicons name="arrow-redo" size={21} color="white" />
+                <Text style={styles.actionText}>Transférer</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
                 style={styles.actionButtonPin}
                 onPress={pinMessage}
               >
@@ -1333,6 +1428,41 @@ export default function Chat(props) {
             </View>
           </View>
         </Modal>
+        <Modal visible={forwardModalVisible} transparent animationType="fade">
+          <View style={styles.actionModalContainer}>
+            <View style={styles.actionBox}>
+              <Text style={styles.mediaTitle}>Transférer à</Text>
+
+              <FlatList
+                data={contacts}
+                keyExtractor={(item, index) => index.toString()}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.forwardContactRow}
+                    onPress={() => sendForwardToContact(item)}
+                  >
+                    <Ionicons name="person-circle" size={28} color="#B135A3" />
+
+                    <Text style={styles.forwardContactText}>
+                      {item.Nom || item.Pseudo || item.Email || "Contact"}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              />
+
+              <TouchableOpacity
+                style={styles.actionButtonDark}
+                onPress={() => {
+                  setForwardModalVisible(false);
+                  setSelectedMessage(null);
+                }}
+              >
+                <Ionicons name="close" size={21} color="white" />
+                <Text style={styles.actionText}>Annuler</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </ImageBackground>
     </KeyboardAvoidingView>
   );
@@ -1355,6 +1485,24 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     backgroundColor: colors.primary,
+  },
+  forwardContactRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
+    width: "100%",
+    padding: 10,
+    borderRadius: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "#B135A3",
+  },
+
+  forwardContactText: {
+    color: "#2B1B26",
+    fontSize: 15,
+    fontWeight: "bold",
+    marginLeft: 8,
   },
   mediaButton: {
     flexDirection: "row",

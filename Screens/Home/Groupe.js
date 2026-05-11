@@ -21,11 +21,13 @@ import * as Location from "expo-location";
 import { Video, Audio } from "expo-av";
 import * as MediaLibrary from "expo-media-library";
 import * as FileSystem from "expo-file-system";
+import * as Clipboard from "expo-clipboard";
 
 const auth = firebase.auth();
 const database = firebase.database();
 const ref_all_accounts = database.ref("allaccounts");
 const ref_all_groups = database.ref("allgroups");
+const ref_all_messages = database.ref("allmessages");
 
 export default function Groupe(props) {
   const userid = props.route?.params?.userid || auth.currentUser?.uid;
@@ -67,6 +69,8 @@ export default function Groupe(props) {
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [reactionModalVisible, setReactionModalVisible] = useState(false);
   const [replyMessage, setReplyMessage] = useState(null);
+
+  const [forwardModalVisible, setForwardModalVisible] = useState(false);
 
   useEffect(() => {
     if (!userid) return;
@@ -803,6 +807,67 @@ export default function Groupe(props) {
     setReactionModalVisible(false);
     setSelectedMessage(null);
   };
+  const copyMessage = async () => {
+    if (!selectedMessage) return;
+
+    const text =
+      selectedMessage.message ||
+      selectedMessage.imageUrl ||
+      selectedMessage.videoUrl ||
+      selectedMessage.audioUrl ||
+      (selectedMessage.isLocation
+        ? `https://www.google.com/maps?q=${selectedMessage.latitude},${selectedMessage.longitude}`
+        : "");
+
+    if (!text) return;
+
+    await Clipboard.setStringAsync(String(text));
+
+    setReactionModalVisible(false);
+    setSelectedMessage(null);
+
+    Alert.alert("Copié", "Message copié.");
+  };
+
+  const forwardMessage = () => {
+    if (!selectedMessage) return;
+
+    setReactionModalVisible(false);
+    setForwardModalVisible(true);
+  };
+
+  const sendForwardToContact = (contact) => {
+    if (!selectedMessage || !userid || !contact.Id) return;
+
+    const forwardDiscussionId =
+      userid > contact.Id ? userid + contact.Id : contact.Id + userid;
+
+    ref_all_messages
+      .child(forwardDiscussionId)
+      .child("chat")
+      .push()
+      .set({
+        idsender: userid,
+        idreceiver: contact.Id,
+        forwarded: true,
+        message: selectedMessage.message || "",
+        imageUrl: selectedMessage.imageUrl || null,
+        videoUrl: selectedMessage.videoUrl || null,
+        audioUrl: selectedMessage.audioUrl || null,
+        latitude: selectedMessage.latitude || null,
+        longitude: selectedMessage.longitude || null,
+        isLocation: selectedMessage.isLocation || false,
+        time: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      });
+
+    setForwardModalVisible(false);
+    setSelectedMessage(null);
+
+    Alert.alert("Transféré", "Message transféré avec succès.");
+  };
   return (
     <ImageBackground
       source={
@@ -1525,6 +1590,18 @@ export default function Groupe(props) {
               <Ionicons name="return-down-forward" size={21} color="white" />
               <Text style={styles.actionText}>Répondre</Text>
             </TouchableOpacity>
+            <TouchableOpacity style={styles.actionButton} onPress={copyMessage}>
+              <Ionicons name="copy" size={21} color="white" />
+              <Text style={styles.actionText}>Copier</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={forwardMessage}
+            >
+              <Ionicons name="arrow-redo" size={21} color="white" />
+              <Text style={styles.actionText}>Transférer</Text>
+            </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.actionButtonPin}
@@ -1551,6 +1628,41 @@ export default function Groupe(props) {
                 <Text style={styles.actionText}>Supprimer pour tous</Text>
               </TouchableOpacity>
             )}
+          </View>
+        </View>
+      </Modal>
+      <Modal visible={forwardModalVisible} transparent animationType="fade">
+        <View style={styles.actionModalContainer}>
+          <View style={styles.actionBox}>
+            <Text style={styles.modalTitle}>Transférer à</Text>
+
+            <FlatList
+              data={contacts}
+              keyExtractor={(item, index) => index.toString()}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.forwardContactRow}
+                  onPress={() => sendForwardToContact(item)}
+                >
+                  <Ionicons name="person-circle" size={28} color="#B135A3" />
+
+                  <Text style={styles.forwardContactText}>
+                    {item.Nom || item.Pseudo || item.Email || "Contact"}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            />
+
+            <TouchableOpacity
+              style={styles.actionButtonDark}
+              onPress={() => {
+                setForwardModalVisible(false);
+                setSelectedMessage(null);
+              }}
+            >
+              <Ionicons name="close" size={21} color="white" />
+              <Text style={styles.actionText}>Annuler</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -2274,6 +2386,24 @@ const styles = StyleSheet.create({
     backgroundColor: "#B135A3",
     justifyContent: "center",
     alignItems: "center",
+    marginLeft: 8,
+  },
+  forwardContactRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
+    width: "100%",
+    padding: 10,
+    borderRadius: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "#B135A3",
+  },
+
+  forwardContactText: {
+    color: "#2B1B26",
+    fontSize: 15,
+    fontWeight: "bold",
     marginLeft: 8,
   },
 });
