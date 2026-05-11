@@ -65,6 +65,9 @@ export default function Chat(props) {
   const [contacts, setContacts] = useState([]);
   const [forwardModalVisible, setForwardModalVisible] = useState(false);
 
+  const [editingMessage, setEditingMessage] = useState(null);
+  const [editedText, setEditedText] = useState("");
+
   const iddiscussion =
     currentid && secondid
       ? currentid > secondid
@@ -751,6 +754,23 @@ export default function Chat(props) {
     setReactionModalVisible(false);
     setForwardModalVisible(true);
   };
+  const editMessage = () => {
+    if (!iddiscussion || !editingMessage) return;
+
+    if (!editedText.trim()) return;
+
+    ref_all_messages
+      .child(iddiscussion)
+      .child("chat")
+      .child(editingMessage.key)
+      .update({
+        message: editedText,
+        edited: true,
+      });
+
+    setEditingMessage(null);
+    setEditedText("");
+  };
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -930,8 +950,10 @@ export default function Chat(props) {
                   {item.pinned && (
                     <Text style={styles.pinnedText}>📌 Message épinglé</Text>
                   )}
-                  <Text style={styles.timeText}>{String(item.time || "")}</Text>
-
+                  <Text style={styles.timeText}>
+                    {String(item.time || "")}
+                    {item.edited ? " • modifié" : ""}
+                  </Text>
                   {item.reaction && (
                     <TouchableOpacity
                       onPress={() => {
@@ -985,9 +1007,13 @@ export default function Chat(props) {
 
         <View style={styles.inputContainer}>
           <TextInput
-            value={message}
+            value={editingMessage ? editedText : message}
             onChangeText={(txt) => {
-              setMessage(txt);
+              if (editingMessage) {
+                setEditedText(txt);
+              } else {
+                setMessage(txt);
+              }
             }}
             onFocus={() => {
               if (iddiscussion)
@@ -1046,7 +1072,16 @@ export default function Chat(props) {
                 color="white"
               />
             </TouchableOpacity>
-            <TouchableOpacity onPress={sendMessage} style={styles.sendButton}>
+            <TouchableOpacity
+              onPress={() => {
+                if (editingMessage) {
+                  editMessage();
+                } else {
+                  sendMessage();
+                }
+              }}
+              style={styles.sendButton}
+            >
               <Ionicons name="send" size={20} color="white" />
             </TouchableOpacity>
           </View>
@@ -1335,6 +1370,20 @@ export default function Chat(props) {
                 <Ionicons name="pin" size={21} color="white" />
                 <Text style={styles.actionText}>Épingler</Text>
               </TouchableOpacity>
+              {selectedMessage?.idsender === currentid &&
+                selectedMessage?.message && (
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => {
+                      setEditedText(selectedMessage.message);
+                      setEditingMessage(selectedMessage);
+                      setReactionModalVisible(false);
+                    }}
+                  >
+                    <Ionicons name="create" size={21} color="white" />
+                    <Text style={styles.actionText}>Modifier</Text>
+                  </TouchableOpacity>
+                )}
               <TouchableOpacity
                 style={styles.actionButtonDark}
                 onPress={deleteForMe}

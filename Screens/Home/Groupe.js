@@ -74,6 +74,9 @@ export default function Groupe(props) {
 
   const [forwardModalVisible, setForwardModalVisible] = useState(false);
 
+  const [editingMessage, setEditingMessage] = useState(null);
+  const [editedText, setEditedText] = useState("");
+
   useEffect(() => {
     if (!userid) return;
 
@@ -870,6 +873,22 @@ export default function Groupe(props) {
 
     Alert.alert("Transféré", "Message transféré avec succès.");
   };
+  const editGroupMessage = () => {
+    if (!selectedGroup || !editingMessage) return;
+    if (!editedText.trim()) return;
+
+    ref_all_groups
+      .child(selectedGroup.key)
+      .child("messages")
+      .child(editingMessage.key)
+      .update({
+        message: editedText.trim(),
+        edited: true,
+      });
+
+    setEditingMessage(null);
+    setEditedText("");
+  };
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -1126,6 +1145,7 @@ export default function Groupe(props) {
 
                       <Text style={styles.timeText}>
                         {String(item.time || "")}
+                        {item.edited ? " • modifié" : ""}
                       </Text>
 
                       {item.reaction && (
@@ -1182,8 +1202,14 @@ export default function Groupe(props) {
             )}
             <View style={styles.inputContainer}>
               <TextInput
-                value={message}
-                onChangeText={setMessage}
+                value={editingMessage ? editedText : message}
+                onChangeText={(txt) => {
+                  if (editingMessage) {
+                    setEditedText(txt);
+                  } else {
+                    setMessage(txt);
+                  }
+                }}
                 placeholder="Écrire un message..."
                 placeholderTextColor="#777"
                 style={styles.input}
@@ -1234,7 +1260,13 @@ export default function Groupe(props) {
 
                 <TouchableOpacity
                   style={styles.sendButton}
-                  onPress={sendGroupMessage}
+                  onPress={() => {
+                    if (editingMessage) {
+                      editGroupMessage();
+                    } else {
+                      sendGroupMessage();
+                    }
+                  }}
                 >
                   <Ionicons name="send" size={20} color="white" />
                 </TouchableOpacity>
@@ -1629,7 +1661,20 @@ export default function Groupe(props) {
                 <Ionicons name="arrow-redo" size={21} color="white" />
                 <Text style={styles.actionText}>Transférer</Text>
               </TouchableOpacity>
-
+              {selectedMessage?.idsender === userid &&
+                selectedMessage?.message && (
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => {
+                      setEditedText(selectedMessage.message);
+                      setEditingMessage(selectedMessage);
+                      setReactionModalVisible(false);
+                    }}
+                  >
+                    <Ionicons name="create" size={21} color="white" />
+                    <Text style={styles.actionText}>Modifier</Text>
+                  </TouchableOpacity>
+                )}
               <TouchableOpacity
                 style={styles.actionButtonPin}
                 onPress={pinMessage}
