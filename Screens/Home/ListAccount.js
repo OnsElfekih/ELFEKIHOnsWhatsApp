@@ -10,6 +10,7 @@ import {
   Pressable,
   Linking,
   TextInput,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -50,6 +51,7 @@ export default function ListAccount(props) {
             .then((nicknameSnapshot) => {
               d.push({
                 ...otherUser,
+                key: one_account.key,
                 Nickname: nicknameSnapshot.val() || "",
               });
 
@@ -94,6 +96,36 @@ export default function ListAccount(props) {
     });
 
     setdata(result);
+  };
+  const deleteContact = () => {
+    if (!selectedUser) return;
+
+    Alert.alert(
+      "Confirmation",
+      `Êtes-vous sûr de supprimer ${
+        selectedUser.Nickname || selectedUser.Nom
+      } ?`,
+      [
+        {
+          text: "Annuler",
+          style: "cancel",
+        },
+        {
+          text: "Supprimer",
+          style: "destructive",
+          onPress: () => {
+            ref_all_accounts.child(selectedUser.key).remove();
+            const newData = allData.filter(
+              (item) => item.Id !== selectedUser.Id,
+            );
+
+            setdata(newData);
+            setAllData(newData);
+            setIsModalVisible(false);
+          },
+        },
+      ],
+    );
   };
   return (
     <ImageBackground
@@ -216,7 +248,10 @@ export default function ListAccount(props) {
             </Text>
             <Text style={styles.modalText}>{selectedUser?.Numero}</Text>
             <Text style={styles.modalText}>{selectedUser?.Email}</Text>
-
+            <Pressable onPress={deleteContact} style={styles.deleteButton}>
+              <Ionicons name="trash" size={18} color="white" />
+              <Text style={styles.actionText}>Supprimer contact</Text>
+            </Pressable>
             <Pressable
               onPress={() => {
                 setIsModalVisible(false);
@@ -406,5 +441,22 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     color: "#2B1B26",
     fontSize: 14,
+  },
+  deleteButton: {
+    flexDirection: "row",
+    width: 190,
+    height: 43,
+    backgroundColor: "#C62828",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 8,
+    marginTop: 10,
+  },
+
+  actionText: {
+    color: "white",
+    fontSize: 15,
+    fontWeight: "bold",
+    marginLeft: 6,
   },
 });
