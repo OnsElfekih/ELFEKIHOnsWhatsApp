@@ -1120,20 +1120,59 @@ export default function Groupe(props) {
               data={getGroupMedia()}
               keyExtractor={(item, index) => index.toString()}
               renderItem={({ item }) => (
-                <TouchableOpacity style={styles.mediaItem}>
-                  <Text style={styles.mediaText}>
-                    {item.imageUrl
-                      ? "Image partagée"
-                      : item.videoUrl
-                        ? "Vidéo partagée"
-                        : item.audioUrl
-                          ? "Message vocal"
-                          : item.isLocation
-                            ? "Localisation partagée"
-                            : item.pinned
-                              ? "Message épinglé: " + (item.message || "")
-                              : item.message}
-                  </Text>
+                <TouchableOpacity
+                  style={styles.mediaItem}
+                  onPress={() => {
+                    if (item.isLocation) {
+                      Linking.openURL(
+                        `https://www.google.com/maps?q=${item.latitude},${item.longitude}`,
+                      );
+                    } else if (item.message) {
+                      Linking.openURL(String(item.message));
+                    }
+                  }}
+                >
+                  {item.audioUrl ? (
+                    <TouchableOpacity
+                      style={styles.audioBox}
+                      onPress={() => {
+                        playAudioMessage(item.audioUrl, item.key);
+                      }}
+                    >
+                      <Ionicons
+                        name={
+                          playingAudio === item.key ? "volume-high" : "play"
+                        }
+                        size={22}
+                        color="white"
+                      />
+                      <Text style={styles.audioText}>Message vocal</Text>
+                    </TouchableOpacity>
+                  ) : item.videoUrl ? (
+                    <Video
+                      source={{ uri: String(item.videoUrl) }}
+                      style={styles.mediaVideo}
+                      useNativeControls
+                      resizeMode="contain"
+                    />
+                  ) : item.imageUrl ? (
+                    <Image
+                      source={{ uri: String(item.imageUrl) }}
+                      style={styles.mediaImage}
+                    />
+                  ) : item.isLocation ? (
+                    <Text style={styles.mediaText}>
+                      📍 Localisation partagée
+                    </Text>
+                  ) : item.pinned ? (
+                    <Text style={styles.mediaText}>
+                      📌 {item.message || "Message épinglé"}
+                    </Text>
+                  ) : (
+                    <Text style={styles.mediaText}>
+                      {String(item.message || "")}
+                    </Text>
+                  )}
                 </TouchableOpacity>
               )}
             />
@@ -1669,5 +1708,31 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginLeft: 5,
+  },
+  mediaImage: {
+    width: 90,
+    height: 90,
+    borderRadius: 10,
+  },
+
+  mediaVideo: {
+    width: 220,
+    height: 220,
+    borderRadius: 10,
+    marginBottom: 4,
+  },
+
+  audioBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#B135A3",
+    padding: 10,
+    borderRadius: 18,
+  },
+
+  audioText: {
+    color: "white",
+    fontWeight: "bold",
+    marginLeft: 8,
   },
 });
