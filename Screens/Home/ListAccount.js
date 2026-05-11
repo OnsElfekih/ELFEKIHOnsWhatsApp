@@ -20,6 +20,7 @@ import firebase from "../../Config";
 const database = firebase.database();
 const ref_all_accounts = database.ref("allaccounts");
 const ref_all_messages = database.ref("allmessages");
+const ref_presence = database.ref("presence");
 
 export default function ListAccount(props) {
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -55,18 +56,25 @@ export default function ListAccount(props) {
                 Nickname: nicknameSnapshot.val() || "",
               });
 
-              setdata([...d]);
-              setAllData([...d]);
+              ref_presence.once("value").then((presenceSnapshot) => {
+                const statusData = presenceSnapshot.val() || {};
+
+                const updated = d.map((item) => ({
+                  ...item,
+                  presence: statusData[item.Id],
+                }));
+
+                setdata([...updated]);
+                setAllData([...updated]);
+              });
             });
         }
       });
-
-      setdata(d);
-      setAllData(d);
     });
 
     return () => {
       ref_all_accounts.off();
+      ref_presence.off();
     };
   }, []);
   const searchContact = (txt) => {
@@ -175,6 +183,13 @@ export default function ListAccount(props) {
                 <Text style={styles.pseudo}>{item.Pseudo}</Text>
                 <Text style={styles.email}>{item.Email}</Text>
                 <Text style={styles.numero}>{item.Numero}</Text>
+                <Text style={styles.statusText}>
+                  {item.presence?.online
+                    ? "Connecté"
+                    : item.presence?.lastSeen
+                      ? "Vu dernièrement " + item.presence.lastSeen
+                      : "Hors ligne"}
+                </Text>
               </View>
 
               <View style={styles.actionsBox}>
@@ -458,5 +473,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "bold",
     marginLeft: 6,
+  },
+  statusText: {
+    fontSize: 12,
+    color: "#6D2E5B",
+    marginTop: 2,
+    fontWeight: "bold",
   },
 });

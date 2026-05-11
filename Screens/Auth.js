@@ -14,6 +14,7 @@ import firebase from "../Config";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const auth = firebase.auth();
+const database = firebase.database();
 
 export default function Auth(props) {
   var email = props.route.params?.email || "elfekihons@gmail.com",
@@ -71,6 +72,16 @@ export default function Auth(props) {
                 const userid = auth.currentUser.uid;
 
                 await AsyncStorage.setItem("userid", userid);
+
+                database.ref("presence").child(userid).set({
+                  online: true,
+                  connectedAt: new Date().toLocaleString(),
+                });
+
+                database.ref("presence").child(userid).onDisconnect().update({
+                  online: false,
+                  lastSeen: new Date().toLocaleString(),
+                });
 
                 props.navigation.navigate("Home", {
                   userid: userid,
