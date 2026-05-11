@@ -9,6 +9,7 @@ import {
   Modal,
   Pressable,
   Linking,
+  TextInput,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -23,7 +24,8 @@ export default function ListAccount(props) {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedUser, setSelectedUser] = useState();
   const [data, setdata] = useState([]);
-
+  const [search, setSearch] = useState("");
+  const [allData, setAllData] = useState([]);
 
   const userid = props.route.params.userid;
 
@@ -52,25 +54,66 @@ export default function ListAccount(props) {
               });
 
               setdata([...d]);
+              setAllData([...d]);
             });
         }
       });
 
       setdata(d);
+      setAllData(d);
     });
 
     return () => {
       ref_all_accounts.off();
     };
   }, []);
+  const searchContact = (txt) => {
+    setSearch(txt);
 
+    const value = txt.toLowerCase();
+
+    if (value.trim() === "") {
+      setdata(allData);
+      return;
+    }
+
+    const result = allData.filter((item) => {
+      const nom = String(item.Nom || "").toLowerCase();
+      const nickname = String(item.Nickname || "").toLowerCase();
+      const pseudo = String(item.Pseudo || "").toLowerCase();
+      const email = String(item.Email || "").toLowerCase();
+      const numero = String(item.Numero || "").toLowerCase();
+
+      return (
+        nom.includes(value) ||
+        nickname.includes(value) ||
+        pseudo.includes(value) ||
+        email.includes(value) ||
+        numero.includes(value)
+      );
+    });
+
+    setdata(result);
+  };
   return (
     <ImageBackground
       style={styles.container}
       source={require("../../assets/backgroundimg1.jpg")}
     >
       <Text style={styles.title}>Liste des contacts</Text>
+      <View style={styles.searchBox}>
+        <Ionicons name="search" size={20} color="#B135A3" />
 
+        <TextInput
+          value={search}
+          onChangeText={(txt) => {
+            searchContact(txt);
+          }}
+          placeholder="Rechercher nom, surnom, email, téléphone..."
+          placeholderTextColor="#777"
+          style={styles.searchInput}
+        />
+      </View>
       <FlatList
         data={data}
         keyExtractor={(item, index) => index.toString()}
@@ -344,5 +387,24 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 18,
     fontWeight: "bold",
+  },
+  searchBox: {
+    width: "95%",
+    height: 45,
+    backgroundColor: "#FFF8FC",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#B135A3",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    marginBottom: 12,
+  },
+
+  searchInput: {
+    flex: 1,
+    marginLeft: 8,
+    color: "#2B1B26",
+    fontSize: 14,
   },
 });
