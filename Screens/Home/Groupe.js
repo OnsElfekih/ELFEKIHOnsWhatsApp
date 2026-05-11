@@ -454,6 +454,15 @@ export default function Groupe(props) {
                       isSender ? styles.senderBubble : styles.receiverBubble,
                     ]}
                   >
+                    {item.idsender !== userid && item.idsender !== "system" && (
+                      <Text style={styles.senderName}>
+                        {contacts.find((c) => c.Id === item.idsender)?.Nom ||
+                          contacts.find((c) => c.Id === item.idsender)
+                            ?.Pseudo ||
+                          contacts.find((c) => c.Id === item.idsender)?.Email ||
+                          "Membre"}
+                      </Text>
+                    )}
                     <Text
                       style={
                         item.idsender === "system"
@@ -960,5 +969,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#B135A3",
     alignItems: "center",
     justifyContent: "center",
+  },
+  senderName: {
+    color: "#B135A3",
+    fontSize: 12,
+    fontWeight: "bold",
+    marginBottom: 4,
   },
 });
