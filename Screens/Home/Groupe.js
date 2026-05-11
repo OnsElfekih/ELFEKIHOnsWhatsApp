@@ -217,6 +217,34 @@ export default function Groupe(props) {
       ],
     );
   };
+  const deleteGroup = () => {
+    if (!selectedGroup || selectedGroup.creator !== userid) {
+      Alert.alert("Erreur", "Seul l'administrateur peut supprimer le groupe.");
+      return;
+    }
+
+    Alert.alert(
+      "Confirmation",
+      "Voulez-vous supprimer le groupe " + selectedGroup.name + " ?",
+      [
+        {
+          text: "Annuler",
+          style: "cancel",
+        },
+        {
+          text: "Supprimer",
+          style: "destructive",
+          onPress: () => {
+            ref_all_groups.child(selectedGroup.key).remove();
+
+            setSelectedGroup(null);
+            setGroupMessages([]);
+            setMembersModalVisible(false);
+          },
+        },
+      ],
+    );
+  };
 
   return (
     <ImageBackground
@@ -279,6 +307,14 @@ export default function Groupe(props) {
             >
               <Ionicons name="people" size={22} color="#B135A3" />
             </TouchableOpacity>
+            {selectedGroup?.creator === userid && (
+              <TouchableOpacity
+                onPress={deleteGroup}
+                style={styles.deleteGroupButton}
+              >
+                <Ionicons name="trash" size={20} color="white" />
+              </TouchableOpacity>
+            )}
           </View>
 
           <FlatList
@@ -728,5 +764,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "bold",
     textAlign: "center",
+  },
+  deleteGroupButton: {
+    marginLeft: 8,
+    backgroundColor: "#C62828",
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
