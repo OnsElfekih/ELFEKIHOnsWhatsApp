@@ -53,6 +53,10 @@ export default function Chat(props) {
   const [myNickname, setMyNickname] = useState("");
   const [nicknameChoiceVisible, setNicknameChoiceVisible] = useState(false);
   const [nicknameTarget, setNicknameTarget] = useState("contact");
+
+  const [chatBackground, setChatBackground] = useState(null);
+  const [backgroundModalVisible, setBackgroundModalVisible] = useState(false);
+
   const iddiscussion =
     currentid && secondid
       ? currentid > secondid
@@ -104,14 +108,61 @@ export default function Chat(props) {
       setSecondistyping(snapshot.val() === true);
     });
 
+    const ref_background = ref_all_messages
+      .child(iddiscussion)
+      .child("background");
+
+    ref_background.on("value", (snapshot) => {
+      setChatBackground(snapshot.val());
+    });
+
     return () => {
       ref_chat.off();
       ref_second_istyping.off();
       ref_nickname.off();
       ref_my_nickname.off();
+      ref_background.off();
     };
   }, [iddiscussion, secondid, currentid]);
+  const changeChatBackground = async () => {
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
 
+    if (!permissionResult.granted) {
+      Alert.alert("Permission requise", "Accès à la galerie nécessaire.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 0.5,
+    });
+
+    if (!result.canceled) {
+      const asset = result.assets[0];
+
+      const link = await uploadFileToSupabase(asset.uri, "image");
+
+      if (!link || !iddiscussion) return;
+
+      ref_all_messages.child(iddiscussion).child("background").set(link);
+
+      ref_all_messages
+        .child(iddiscussion)
+        .child("chat")
+        .push()
+        .set({
+          idsender: "system",
+          idreceiver: "system",
+          systemMessage: "Le fond de la conversation a été changé",
+          time: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        });
+    }
+  };
   const uploadFileToSupabase = async (url, type = "image") => {
     const response = await fetch(url);
 
@@ -620,7 +671,11 @@ export default function Chat(props) {
     >
       <ImageBackground
         style={styles.container}
-        source={require("../assets/backgroundimg1.jpg")}
+        source={
+          chatBackground
+            ? { uri: chatBackground }
+            : require("../assets/backgroundimg1.jpg")
+        }
       >
         <TouchableOpacity
           onLongPress={() => {
@@ -639,6 +694,13 @@ export default function Chat(props) {
         >
           <Ionicons name="folder-open" size={20} color="white" />
           <Text style={styles.mediaButtonText}>Médias partagés</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.mediaButton}
+          onPress={changeChatBackground}
+        >
+          <Ionicons name="image" size={20} color="white" />
+          <Text style={styles.mediaButtonText}>Changer le fond</Text>
         </TouchableOpacity>
 
         <FlatList
