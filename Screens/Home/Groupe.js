@@ -37,6 +37,9 @@ export default function Groupe(props) {
 
   const [myAccount, setMyAccount] = useState(null);
 
+  const [inviteModalVisible, setInviteModalVisible] = useState(false);
+  const [availableContacts, setAvailableContacts] = useState([]);
+
   useEffect(() => {
     if (!userid) return;
 
@@ -314,6 +317,46 @@ export default function Groupe(props) {
       ]);
     }
   };
+  const openInviteModal = () => {
+    if (!selectedGroup) return;
+
+    const available = contacts.filter(
+      (contact) => !selectedGroup.members || !selectedGroup.members[contact.Id],
+    );
+
+    setAvailableContacts(available);
+    setInviteModalVisible(true);
+  };
+
+  const inviteMember = (contact) => {
+    if (!selectedGroup) return;
+
+    ref_all_groups
+      .child(selectedGroup.key)
+      .child("members")
+      .child(contact.Id)
+      .set(true);
+
+    ref_all_groups
+      .child(selectedGroup.key)
+      .child("messages")
+      .push()
+      .set({
+        idsender: "system",
+        message:
+          (contact.Nom || contact.Pseudo || contact.Email) +
+          " a été ajouté au groupe",
+        time: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      });
+
+    setAvailableContacts(
+      availableContacts.filter((item) => item.Id !== contact.Id),
+    );
+    setGroupMembers([...groupMembers, contact]);
+  };
   return (
     <ImageBackground
       source={require("../../assets/backgroundimg1.jpg")}
@@ -534,10 +577,46 @@ export default function Groupe(props) {
                 </View>
               )}
             />
-
+            <Pressable style={styles.inviteButton} onPress={openInviteModal}>
+              <Ionicons name="person-add" size={18} color="white" />
+              <Text style={styles.inviteText}>Inviter un contact</Text>
+            </Pressable>
             <Pressable
               style={styles.cancelButton}
               onPress={() => setMembersModalVisible(false)}
+            >
+              <Text style={styles.cancelText}>Fermer</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+      <Modal visible={inviteModalVisible} transparent animationType="fade">
+        <View style={styles.modalContainer}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Inviter un contact</Text>
+
+            <FlatList
+              data={availableContacts}
+              keyExtractor={(item, index) => index.toString()}
+              renderItem={({ item }) => (
+                <View style={styles.memberRow}>
+                  <Text style={styles.memberName}>
+                    {item.Nom || item.Pseudo || item.Email}
+                  </Text>
+
+                  <TouchableOpacity
+                    style={styles.inviteSmallButton}
+                    onPress={() => inviteMember(item)}
+                  >
+                    <Ionicons name="add" size={20} color="white" />
+                  </TouchableOpacity>
+                </View>
+              )}
+            />
+
+            <Pressable
+              style={styles.cancelButton}
+              onPress={() => setInviteModalVisible(false)}
             >
               <Text style={styles.cancelText}>Fermer</Text>
             </Pressable>
@@ -854,6 +933,31 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  inviteButton: {
+    flexDirection: "row",
+    height: 42,
+    backgroundColor: "#B135A3",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+    marginTop: 10,
+  },
+
+  inviteText: {
+    color: "white",
+    fontSize: 15,
+    fontWeight: "bold",
+    marginLeft: 6,
+  },
+
+  inviteSmallButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#B135A3",
     alignItems: "center",
     justifyContent: "center",
   },
