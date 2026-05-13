@@ -252,7 +252,7 @@ Ajouter ici les captures d’écran de :
 ---
 
 # 👨‍💻 Auteur
-
 **Ons ELFEKIH**
-Étudiants en ingénierie informatique — Business Intelligence
 ---
+
+Étudiants en ingénierie informatique — Business Intelligence
