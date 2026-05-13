@@ -1,37 +1,38 @@
-# ELFEKIHOnsWhatsApp
+# 💬 ELFEKIHOnsWhatsApp
 
 Application mobile de messagerie instantanée développée avec React Native et Firebase.
 
-Le projet reproduit les principales fonctionnalités des applications modernes de communication comme WhatsApp et Messenger tout en appliquant les concepts de développement mobile temps réel.
+Le projet reproduit les principales fonctionnalités des applications modernes comme WhatsApp et Messenger tout en appliquant les concepts du développement mobile temps réel.
 
 ---
 
-# Description du projet
+# 📖 Description du projet
 
 Cette application permet aux utilisateurs de :
 
-- créer un compte
-- se connecter
-- gérer leur profil
-- discuter en temps réel
-- créer des groupes
-- envoyer des médias
-- partager une localisation
-- envoyer des messages vocaux
-- réagir aux messages
-- répondre aux messages
-- transférer des messages
-- modifier ou supprimer des messages
-- changer le fond des conversations
-- gérer les membres des groupes
+- 👤 créer un compte
+- 🔐 se connecter
+- 🖼️ gérer leur profil
+- 💬 discuter en temps réel
+- 👥 créer des groupes
+- 📷 envoyer des médias
+- 📍 partager une localisation
+- 🎤 envoyer des messages vocaux
+- ❤️ réagir aux messages
+- ↩️ répondre aux messages
+- 📤 transférer des messages
+- ✏️ modifier des messages
+- 🗑️ supprimer des messages
+- 🎨 changer le fond des conversations
+- 👨‍👩‍👧 gérer les membres des groupes
 
 Les données sont synchronisées en temps réel grâce à Firebase Realtime Database.
 
 ---
 
-# Fonctionnalités principales
+# ✨ Fonctionnalités principales
 
-## Authentification
+## 🔐 Authentification
 
 - création de compte
 - connexion
@@ -39,7 +40,9 @@ Les données sont synchronisées en temps réel grâce à Firebase Realtime Data
 - récupération du mot de passe par email
 - sauvegarde de session avec AsyncStorage
 
-## Gestion du profil
+---
+
+## 👤 Gestion du profil
 
 - modification du profil
 - changement de photo
@@ -47,7 +50,9 @@ Les données sont synchronisées en temps réel grâce à Firebase Realtime Data
 - changement du fond de conversation
 - affichage du statut de connexion
 
-## Messagerie privée
+---
+
+## 💬 Messagerie privée
 
 - envoi de messages texte
 - envoi d’images
@@ -65,7 +70,9 @@ Les données sont synchronisées en temps réel grâce à Firebase Realtime Data
 - liens cliquables
 - téléchargement des médias
 
-## Groupes
+---
+
+## 👥 Groupes
 
 - création de groupes
 - ajout de membres
@@ -79,28 +86,34 @@ Les données sont synchronisées en temps réel grâce à Firebase Realtime Data
 - gestion des messages épinglés
 - réactions et réponses comme dans les discussions privées
 
-## Présence utilisateur
+---
+
+## 🟢 Présence utilisateur
 
 - affichage des utilisateurs connectés
 - affichage du dernier passage en ligne
 
 ---
 
-# Technologies utilisées
+# 🛠️ Technologies utilisées
 
-## Frontend
+## 📱 Frontend
 
 - React Native
 - Expo
 - JavaScript
 
-## Backend et services
+---
+
+## ☁️ Backend et services
 
 - Firebase Authentication
 - Firebase Realtime Database
 - Supabase Storage
 
-## Bibliothèques principales
+---
+
+## 📚 Bibliothèques principales
 
 - React Navigation
 - Expo AV
@@ -112,7 +125,7 @@ Les données sont synchronisées en temps réel grâce à Firebase Realtime Data
 
 ---
 
-# Architecture du projet
+# 🏗️ Architecture du projet
 
 ```txt
 Screens/
@@ -131,39 +144,43 @@ Config.js
 App.js
 ```
 
-# Installation du projet
+---
 
-## 1. Cloner le dépôt
+# ⚙️ Installation du projet
+
+## 1️⃣ Cloner le dépôt
 
 ```bash
 git clone https://github.com/OnsElfekih/ELFEKIHOnsWhatsApp.git
 ```
 
-## 2. Accéder au dossier
+## 2️⃣ Accéder au dossier
 
 ```bash
 cd ELFEKIHOnsWhatsApp
 ```
 
-## 3. Installer les dépendances
+## 3️⃣ Installer les dépendances
 
 ```bash
 npm install
 ```
 
-## 4. Installer Expo
+## 4️⃣ Installer Expo
 
 ```bash
 npm install -g expo-cli
 ```
 
-## 5. Lancer le projet
+## 5️⃣ Lancer le projet
 
 ```bash
 npx expo start
 ```
 
-# Configuration Firebase
+---
+
+# 🔥 Configuration Firebase
 
 Créer un projet Firebase puis activer :
 
@@ -200,15 +217,17 @@ if (!firebase.apps.length) {
 export default firebase;
 ```
 
-# Permissions Android
+---
+
+# 📲 Permissions Android
 
 Le projet utilise plusieurs permissions :
 
-- caméra
-- microphone
-- galerie
-- vidéos
-- localisation
+- 📷 caméra
+- 🎤 microphone
+- 🖼️ galerie
+- 🎞️ vidéos
+- 📍 localisation
 
 Configuration dans :
 
@@ -216,22 +235,24 @@ Configuration dans :
 app.json
 ```
 
-# Captures d’écran
+---
+
+# 📸 Captures d’écran
 
 Ajouter ici les captures d’écran de :
 
-- connexion
-- chat privé
-- groupes
-- partage média
-- profil
-- vocal
-- réactions
+- 🔐 connexion
+- 💬 chat privé
+- 👥 groupes
+- 📷 partage média
+- 👤 profil
+- 🎤 vocal
+- ❤️ réactions
 
-# Auteur
+---
 
-Ons ELFEKIH
+# 👨‍💻 Auteur
 
-# Dépôt GitHub
-
-https://github.com/OnsElfekih/ELFEKIHOnsWhatsApp
+**Ons ELFEKIH**
+Étudiants en ingénierie informatique — Business Intelligence
+---
