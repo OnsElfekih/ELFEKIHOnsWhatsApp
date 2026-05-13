@@ -1124,15 +1124,37 @@ export default function Groupe(props) {
                               </Text>
                             </TouchableOpacity>
                           ) : (
-                            <Text
-                              style={
-                                item.idsender === "system"
-                                  ? styles.systemText
-                                  : styles.messageText
-                              }
+                            <TouchableOpacity
+                              onPress={() => {
+                                const msg = String(item.message || "");
+
+                                if (
+                                  msg.startsWith("http://") ||
+                                  msg.startsWith("https://")
+                                ) {
+                                  Linking.openURL(msg);
+                                }
+                              }}
                             >
-                              {String(item.message || "")}
-                            </Text>
+                              <Text
+                                style={[
+                                  item.idsender === "system"
+                                    ? styles.systemText
+                                    : styles.messageText,
+                                  (String(item.message || "").startsWith(
+                                    "http://",
+                                  ) ||
+                                    String(item.message || "").startsWith(
+                                      "https://",
+                                    )) && {
+                                    color: "#0000",
+                                    textDecorationLine: "underline",
+                                  },
+                                ]}
+                              >
+                                {String(item.message || "")}
+                              </Text>
+                            </TouchableOpacity>
                           )}
                         </>
                       )}

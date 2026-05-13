@@ -941,9 +941,35 @@ export default function Chat(props) {
                           </Text>
                         </TouchableOpacity>
                       ) : (
-                        <Text style={styles.messageText}>
-                          {String(item.message || "")}
-                        </Text>
+                        <TouchableOpacity
+                          onPress={() => {
+                            const msg = String(item.message || "");
+
+                            if (
+                              msg.startsWith("http://") ||
+                              msg.startsWith("https://")
+                            ) {
+                              Linking.openURL(msg);
+                            }
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.messageText,
+                              (String(item.message || "").startsWith(
+                                "http://",
+                              ) ||
+                                String(item.message || "").startsWith(
+                                  "https://",
+                                )) && {
+                                color: "#0000",
+                                textDecorationLine: "underline",
+                              },
+                            ]}
+                          >
+                            {String(item.message || "")}
+                          </Text>
+                        </TouchableOpacity>
                       )}
                     </>
                   )}
